@@ -1,0 +1,69 @@
+---
+layout: default
+title: "[중급프로젝트] - 개발자 2: 임베딩 처리"
+description: "[중급프로젝트] - 개발자 2: 임베딩 처리"
+date: 2025-11-08
+cache-control: no-cache
+expires: 0
+pragma: no-cache
+author: "김명환"
+---
+
+## 🔢 개발자 2: 임베딩 처리
+
+### Phase 1: 환경 설정
+- [ ] LangChain 설치 (`langchain`)
+- [ ] FAISS 설치 (`faiss-cpu` 또는 `faiss-gpu`)
+- [ ] OpenAI API 또는 로컬 임베딩 모델 선정
+- [ ] 텍스트 스플리터 선정 (RecursiveCharacterTextSplitter 등)
+
+### Phase 2: 텍스트 청킹
+- [ ] Markdown 문서 로드 함수 (`documents.db`에서 읽기)
+- [ ] 청킹 설정 파라미터화
+  - [ ] `chunk_size` (기본값: 1000)
+  - [ ] `chunk_overlap` (기본값: 200)
+- [ ] 페이지 구분자 기반 청킹 전략 구현
+- [ ] 청크별 페이지 범위 추적 (start_page, end_page)
+
+### Phase 3: 전처리 옵션
+- [ ] Markdown 태그 제거 옵션 구현
+- [ ] HTML 태그 제거 옵션 구현
+- [ ] 표 구조 유지 옵션 구현
+- [ ] 전처리 설정을 JSON으로 직렬화
+
+### Phase 4: 임베딩 생성
+- [ ] 임베딩 모델 초기화 함수
+- [ ] 배치 임베딩 처리 (메모리 효율성 고려)
+- [ ] 임베딩 설정 해시값 계산 (중복 방지)
+- [ ] FAISS 인덱스 구축 및 저장
+
+### Phase 5: DB 저장 및 증분 업데이트
+- [ ] `embedding_meta` 테이블 삽입 함수
+- [ ] `chunk_mapping` 테이블 삽입 함수
+- [ ] 토큰 수 추정 로직 (`tiktoken` 사용)
+- [ ] file_hash 기반 변경 감지
+- [ ] 기존 임베딩 업데이트 vs 신규 생성 로직
+
+### Phase 6: 검색 인터페이스
+- [ ] 질의 임베딩 생성 함수
+- [ ] FAISS 유사도 검색 함수 (top-k)
+- [ ] 검색 결과 메타데이터 반환 (출처 페이지, 파일명 등)
+- [ ] 필터링 옵션 (파일별, 날짜별 등)
+
+### Phase 7: 통합 및 테스트
+- [ ] 더미 FAISS 인덱스를 실제 구현으로 전환
+- [ ] 3개 샘플 문서로 임베딩 및 검색 테스트
+- [ ] 성능 벤치마크 (임베딩 속도, 검색 속도)
+- [ ] 개발자 3에게 검색 API 전달
+
+### 주요 함수 인터페이스
+```python
+def chunk_markdown(markdown_text: str, chunk_size: int, overlap: int) -> List[dict]:
+    """마크다운을 청크로 분할하고 메타데이터 반환"""
+
+def create_embeddings(chunks: List[str], model_name: str) -> np.ndarray:
+    """청크 리스트를 임베딩 벡터로 변환"""
+
+def search_similar_chunks(query: str, top_k: int) -> List[dict]:
+    """질의에 유사한 청크 검색"""
+```

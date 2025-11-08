@@ -9,8 +9,7 @@ pragma: no-cache
 author: "김명환"
 ---
 
-
-# ✅ doc
+# ✅ 코드잇 AI 4기 3팀 중급 프로젝트
 
 <script>
 
@@ -81,7 +80,7 @@ function getFileInfo(extname) {
   }
 }
 
-{% assign cur_dir = "/doc/" %}
+{% assign cur_dir = "/" %}
 {% include cur_files.liquid %}
 {% include page_values.html %}
 {% include page_files_table.html %}
