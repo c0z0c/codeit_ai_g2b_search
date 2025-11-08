@@ -81,3 +81,154 @@ class EmbeddingsDB:
                 )
             """)
             conn.commit()
+
+    def insert_embedding_meta(
+        self,
+        embedding_hash: str,
+        file_hash: str,
+        chunk_size: int,
+        chunk_overlap: int,
+        preprocessing_option: Dict,
+        embedding_model: str,
+        total_chunks: int,
+        faiss_index_path: str
+    ) -> bool:
+        """
+        임베딩 메타데이터를 데이터베이스에 저장합니다.
+
+        Args:
+            embedding_hash (str): 임베딩 해시값
+            file_hash (str): 파일 해시값
+            chunk_size (int): 청크 크기
+            chunk_overlap (int): 청크 중첩 크기
+            preprocessing_option (Dict): 전처리 옵션
+            embedding_model (str): 임베딩 모델명
+            total_chunks (int): 총 청크 개수
+            faiss_index_path (str): FAISS 인덱스 파일 경로
+
+        Returns:
+            bool: 저장 성공 여부
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO embedding_meta
+                (embedding_hash, file_hash, chunk_size, chunk_overlap, preprocessing_option,
+                 embedding_model, total_chunks, faiss_index_path, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                embedding_hash,
+                file_hash,
+                chunk_size,
+                chunk_overlap,
+                json.dumps(preprocessing_option),
+                embedding_model,
+                total_chunks,
+                faiss_index_path,
+                datetime.now()
+            ))
+            conn.commit()
+            return True
+
+    def insert_chunk_mapping(
+        self,
+        embedding_hash: str,
+        file_hash: str,
+        file_name: str,
+        chunk_text: str,
+        vector_index: int,
+        estimated_tokens: int,
+        start_page: Optional[int] = None,
+        end_page: Optional[int] = None
+    ) -> bool:
+        """
+        청크 매핑 데이터를 데이터베이스에 저장합니다.
+
+        Args:
+            embedding_hash (str): 임베딩 해시값
+            file_hash (str): 파일 해시값
+            file_name (str): 파일 이름
+            chunk_text (str): 청크 텍스트
+            vector_index (int): 벡터 인덱스
+            estimated_tokens (int): 추정 토큰 수
+            start_page (Optional[int]): 시작 페이지
+            end_page (Optional[int]): 종료 페이지
+
+        Returns:
+            bool: 저장 성공 여부
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO chunk_mapping
+                (embedding_hash, file_hash, file_name, start_page, end_page,
+                 chunk_text, estimated_tokens, vector_index)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                embedding_hash,
+                file_hash,
+                file_name,
+                start_page,
+                end_page,
+                chunk_text,
+                estimated_tokens,
+                vector_index
+            ))
+            conn.commit()
+            return True
+
+    def get_embedding_meta(self, embedding_hash: str) -> Optional[Dict[str, Any]]:
+        """
+        임베딩 메타데이터를 조회합니다.
+
+        Args:
+            embedding_hash (str): 임베딩 해시값
+
+        Returns:
+            Optional[Dict[str, Any]]: 메타데이터 딕셔너리 (없으면 None)
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM embedding_meta WHERE embedding_hash = ?",
+                (embedding_hash,)
+            )
+            result = cursor.fetchone()
+            return dict(result) if result else None
+
+    def get_chunks(self, embedding_hash: str) -> List[Dict[str, Any]]:
+        """
+        특정 임베딩에 속한 모든 청크를 조회합니다.
+
+        Args:
+            embedding_hash (str): 임베딩 해시값
+
+        Returns:
+            List[Dict[str, Any]]: 청크 리스트
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM chunk_mapping WHERE embedding_hash = ? ORDER BY vector_index",
+                (embedding_hash,)
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def delete_embedding(self, embedding_hash: str) -> bool:
+        """
+        임베딩 메타데이터와 관련 청크를 삭제합니다.
+
+        Args:
+            embedding_hash (str): 임베딩 해시값
+
+        Returns:
+            bool: 삭제 성공 여부
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM embedding_meta WHERE embedding_hash = ?",
+                (embedding_hash,)
+            )
+            conn.commit()
+            return True
