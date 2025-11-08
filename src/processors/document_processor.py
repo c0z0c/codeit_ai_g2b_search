@@ -11,13 +11,21 @@ except ImportError:
     PYMUPDF_AVAILABLE = False
 
 from src.db import DocumentsDB
+from src.config import get_config
 
 class DocumentProcessor:
     """문서 처리 클래스 - PDF를 Markdown으로 변환하고 DB에 저장"""
 
-    def __init__(self, db_path: str = 'data/documents.db'):
+    def __init__(self, db_path: Optional[str] = None, config=None):
+        # Config 로드
+        self.config = config or get_config()
+
+        # DB 경로 설정 (파라미터 우선, 없으면 Config 사용)
+        if db_path is None:
+            db_path = self.config.DOCUMENTS_DB
+
         self.docs_db = DocumentsDB(db_path)
-        self.tokenizer = tiktoken.encoding_for_model("gpt-4")
+        self.tokenizer = tiktoken.encoding_for_model(self.config.OPENAI_TOKENIZER_MODEL)
 
     def calculate_file_hash(self, file_path: Path) -> str:
         """파일 SHA-256 해시 계산"""
@@ -60,11 +68,11 @@ class DocumentProcessor:
             text = page.get_text("text")
 
             # 빈 페이지 처리
-            is_empty = len(text.strip()) < 10
+            is_empty = len(text.strip()) < self.config.EMPTY_PAGE_THRESHOLD
             if is_empty:
-                page_content = "--- [빈페이지] ---"
+                page_content = self.config.EMPTY_PAGE_MARKER
             else:
-                page_content = f"--- 페이지 {page_num + 1} ---\n\n{text}"
+                page_content = f"{self.config.PAGE_MARKER_FORMAT.format(page_num=page_num + 1)}\n\n{text}"
 
             all_content.append(page_content)
 

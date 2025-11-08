@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from src.db import DocumentsDB, EmbeddingsDB, ChatHistoryDB
 from src.llm.retrieval import Retrieval
 from src.llm.llm_processor import LLMProcessor
+from src.config import get_config
 
 # 페이지 설정
 st.set_page_config(
@@ -24,21 +25,31 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Config 초기화
+@st.cache_resource
+def init_config():
+    """Config 싱글톤 로드"""
+    return get_config()
+
+config = init_config()
+
 # 세션 상태 초기화
 if 'session_id' not in st.session_state:
     st.session_state.session_id = None
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'api_key' not in st.session_state:
-    st.session_state.api_key = os.getenv('OPENAI_API_KEY', '')
+    st.session_state.api_key = config.OPENAI_API_KEY or os.getenv('OPENAI_API_KEY', '')
 
 # DB 초기화
 @st.cache_resource
 def init_dbs():
+    """데이터베이스 초기화"""
+    cfg = get_config()
     return {
-        'docs': DocumentsDB(),
-        'embeddings': EmbeddingsDB(),
-        'chat': ChatHistoryDB()
+        'docs': DocumentsDB(cfg.DOCUMENTS_DB),
+        'embeddings': EmbeddingsDB(cfg.EMBEDDINGS_DB),
+        'chat': ChatHistoryDB(cfg.CHAT_HISTORY_DB)
     }
 
 dbs = init_dbs()
@@ -142,17 +153,17 @@ if prompt := st.chat_input("질문을 입력하세요..."):
             else:
                 embedding_hash = all_embeddings[0]['embedding_hash']
 
-                # 검색 수행
-                retrieval = Retrieval()
+                # 검색 수행 (Config의 TOP_K_FINAL 사용)
+                retrieval = Retrieval(config=config)
                 retrieved_chunks = retrieval.search(
                     query=prompt,
                     embedding_hash=embedding_hash,
-                    top_k=3,
+                    top_k=config.TOP_K_FINAL,
                     api_key=st.session_state.api_key
                 )
 
                 # LLM 응답 생성
-                llm = LLMProcessor()
+                llm = LLMProcessor(config=config)
                 response = llm.generate_response(
                     query=prompt,
                     retrieved_chunks=retrieved_chunks,

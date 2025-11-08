@@ -8,15 +8,21 @@ try:
 except ImportError:
     LANGCHAIN_AVAILABLE = False
 
+from src.config import get_config
+
 class LLMProcessor:
     """LLM 응답 생성 클래스"""
 
-    def __init__(self, model: str = "gpt-4o-mini", temperature: float = 0.7):
-        self.model_name = model
-        self.temperature = temperature
+    def __init__(self, model: Optional[str] = None, temperature: Optional[float] = None, config=None):
+        # Config 로드
+        self.config = config or get_config()
+
+        # 파라미터 우선, 없으면 Config 사용
+        self.model_name = model or self.config.OPENAI_MODEL
+        self.temperature = temperature if temperature is not None else self.config.OPENAI_TEMPERATURE
 
         if LANGCHAIN_AVAILABLE:
-            self.llm = ChatOpenAI(model=model, temperature=temperature)
+            self.llm = ChatOpenAI(model=self.model_name, temperature=self.temperature)
         else:
             print("LangChain이 설치되지 않았습니다.")
 
@@ -47,24 +53,23 @@ class LLMProcessor:
 
         # 컨텍스트 구성
         if not retrieved_chunks:
-            context = "관련 문서를 찾을 수 없습니다."
+            context = self.config.NO_CONTEXT_MESSAGE
         else:
             context_parts = []
             for i, chunk in enumerate(retrieved_chunks, 1):
                 file_name = chunk.get('file_name', 'unknown')
                 chunk_text = chunk.get('chunk_text', '')
-                context_parts.append(f"[문서 {i}: {file_name}]\n{chunk_text}")
+                context_parts.append(
+                    self.config.CONTEXT_FORMAT.format(
+                        index=i,
+                        file_name=file_name,
+                        chunk_text=chunk_text
+                    )
+                )
             context = "\n\n".join(context_parts)
 
         # 프롬프트 템플릿
-        template = """다음 문서를 참고하여 질문에 답변해주세요.
-
-참고 문서:
-{context}
-
-질문: {query}
-
-답변:"""
+        template = self.config.RAG_PROMPT_TEMPLATE
 
         prompt = ChatPromptTemplate.from_template(template)
         chain = prompt | self.llm

@@ -15,16 +15,22 @@ except ImportError:
     LANGCHAIN_AVAILABLE = False
 
 from src.db import EmbeddingsDB
+from src.config import get_config
 
 class Retrieval:
     """검색 클래스 - 쿼리에 대한 유사 청크 검색"""
 
-    def __init__(self, embedding_model: str = "text-embedding-3-small"):
+    def __init__(self, embedding_model: Optional[str] = None, config=None):
+        # Config 로드
+        self.config = config or get_config()
+
+        # 파라미터 우선, 없으면 Config 사용
+        self.embedding_model = embedding_model or self.config.OPENAI_EMBEDDING_MODEL
+
         self.embeddings_db = EmbeddingsDB()
-        self.embedding_model = embedding_model
 
         if LANGCHAIN_AVAILABLE:
-            self.embeddings = OpenAIEmbeddings(model=embedding_model)
+            self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
         else:
             print("LangChain이 설치되지 않았습니다.")
 
@@ -32,7 +38,7 @@ class Retrieval:
         self,
         query: str,
         embedding_hash: str,
-        top_k: int = 5,
+        top_k: Optional[int] = None,
         api_key: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
@@ -41,7 +47,7 @@ class Retrieval:
         Args:
             query: 검색 쿼리
             embedding_hash: 임베딩 해시값
-            top_k: 상위 k개 검색
+            top_k: 상위 k개 검색 (None이면 Config의 TOP_K_SUMMARY 사용)
             api_key: OpenAI API 키
 
         Returns:
@@ -50,6 +56,10 @@ class Retrieval:
         if not LANGCHAIN_AVAILABLE or not FAISS_AVAILABLE:
             print("필수 패키지가 설치되지 않았습니다.")
             return []
+
+        # top_k 기본값 설정
+        if top_k is None:
+            top_k = self.config.TOP_K_SUMMARY
 
         # API 키 설정
         if api_key:

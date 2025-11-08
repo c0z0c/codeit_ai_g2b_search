@@ -19,29 +19,36 @@ except ImportError:
     LANGCHAIN_AVAILABLE = False
 
 from src.db import DocumentsDB, EmbeddingsDB
+from src.config import get_config
 
 class EmbeddingProcessor:
     """임베딩 처리 클래스 - 문서를 청킹하고 벡터 임베딩 생성"""
 
     def __init__(
         self,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200,
-        embedding_model: str = "text-embedding-3-small"
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
+        embedding_model: Optional[str] = None,
+        config=None
     ):
+        # Config 로드
+        self.config = config or get_config()
+
+        # 파라미터 우선, 없으면 Config 사용
+        self.chunk_size = chunk_size if chunk_size is not None else self.config.CHUNK_SIZE
+        self.chunk_overlap = chunk_overlap if chunk_overlap is not None else self.config.CHUNK_OVERLAP
+        self.embedding_model = embedding_model or self.config.OPENAI_EMBEDDING_MODEL
+
         self.docs_db = DocumentsDB()
         self.embeddings_db = EmbeddingsDB()
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-        self.embedding_model = embedding_model
 
         if LANGCHAIN_AVAILABLE:
             self.text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
-                separators=["\n\n", "\n", " ", ""]
+                chunk_size=self.chunk_size,
+                chunk_overlap=self.chunk_overlap,
+                separators=self.config.CHUNK_SEPARATORS
             )
-            self.embeddings = OpenAIEmbeddings(model=embedding_model)
+            self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
         else:
             print("LangChain이 설치되지 않았습니다.")
 
@@ -106,7 +113,7 @@ class EmbeddingProcessor:
         embedding_hash = self.calculate_embedding_hash(file_hash, config)
 
         # FAISS 인덱스 저장
-        faiss_path = f"data/vectorstore/{embedding_hash}.faiss"
+        faiss_path = self.config.get_vectorstore_path(embedding_hash)
         Path(faiss_path).parent.mkdir(parents=True, exist_ok=True)
         faiss.write_index(index, faiss_path)
 
@@ -131,7 +138,7 @@ class EmbeddingProcessor:
                 file_name=file_info['file_name'] if file_info else 'unknown',
                 chunk_text=chunk_text,
                 vector_index=idx,
-                estimated_tokens=len(chunk_text) // 4
+                estimated_tokens=len(chunk_text) // self.config.TOKEN_ESTIMATION_DIVISOR
             )
 
         print(f"임베딩 처리 완료: {embedding_hash[:8]}...")
