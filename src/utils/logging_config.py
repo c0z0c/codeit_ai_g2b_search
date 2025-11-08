@@ -82,6 +82,7 @@ def load_settings() -> Dict:
             'logging': {
                 'level': config.LOG_LEVEL,
                 'log_dir': config.LOG_DIR,
+                'log_file_name': config.LOG_FILE_NAME,
                 'console': True,  # 콘솔 출력 기본 활성화
                 'file': True,     # 파일 출력 기본 활성화
                 'max_bytes': config.LOG_FILE_MAX_BYTES,
@@ -94,6 +95,7 @@ def load_settings() -> Dict:
             'logging': {
                 'level': 'INFO',
                 'log_dir': './logs',
+                'log_file_name': 'rag_system.log',
                 'console': True,
                 'file': True,
                 'max_bytes': 10 * 1024 * 1024,
@@ -188,14 +190,15 @@ def setup_logger(
             log_path = Path(log_dir)
             log_path.mkdir(parents=True, exist_ok=True)
 
-            # 로그 파일 경로
-            log_file = log_path / f"{name.replace('.', '_')}.log"
+            # 통합 로그 파일 경로
+            log_file_name = log_config.get('log_file_name', 'rag_system.log')
+            log_file = log_path / log_file_name
 
             # Config에서 로테이션 설정 가져오기
             max_bytes = log_config.get('max_bytes', 10 * 1024 * 1024)
             backup_count = log_config.get('backup_count', 5)
 
-            # RotatingFileHandler 사용
+            # RotatingFileHandler 사용 (모든 로거가 같은 파일 사용)
             file_handler = logging.handlers.RotatingFileHandler(
                 log_file,
                 maxBytes=max_bytes,

@@ -39,6 +39,7 @@
   "HASH_ALGORITHM": "sha256",
   "LOG_LEVEL": "INFO",
   "LOG_DIR": "logs",
+  "LOG_FILE_NAME": "rag_system.log",
   "LOG_FILE_MAX_BYTES": 10485760,
   "LOG_FILE_BACKUP_COUNT": 5,
   "RAG_PROMPT_TEMPLATE": "다음 문서를 참고하여 질문에 답변해주세요.\n\n참고 문서:\n{context}\n\n질문: {query}\n\n답변:",

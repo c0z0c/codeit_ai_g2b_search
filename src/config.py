@@ -128,6 +128,7 @@ class Config:
     # ==================== 로깅 설정 ====================
     LOG_LEVEL: str = "INFO"  # 로깅 레벨 (DEBUG < INFO < WARNING < ERROR < CRITICAL)
     LOG_DIR: str = "logs"  # 로그 파일 저장 디렉토리
+    LOG_FILE_NAME: str = "rag_system.log"  # 통합 로그 파일명
     LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024  # 로그 파일 최대 크기 (10MB)
     LOG_FILE_BACKUP_COUNT: int = 5  # 로그 파일 로테이션 백업 개수
 
