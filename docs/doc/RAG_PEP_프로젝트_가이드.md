@@ -1,7 +1,7 @@
 ---
 layout: default
-title: "[중급프로젝트] - RAG 시스템 기반 RFP 분석 프로젝트 가이드"
-description: "[중급프로젝트] - RAG 시스템 기반 RFP 분석 프로젝트 가이드"
+title: "[중급프로젝트] - RAG 시스템 기반 PEP 문서 처리 프로젝트 가이드"
+description: "[중급프로젝트] - RAG 시스템 기반 PEP 문서 처리 프로젝트 가이드"
 date: 2025-11-08
 cache-control: no-cache
 expires: 0
@@ -9,7 +9,7 @@ pragma: no-cache
 author: "김명환"
 ---
 
-# [중급프로젝트] - RAG 시스템 기반 RFP 분석 프로젝트 가이드
+# [중급프로젝트] - RAG 시스템 기반 PEP 문서 처리 프로젝트 가이드
 
 ## 목차
 
@@ -46,236 +46,389 @@ author: "김명환"
 
 ### 1.1. 프로젝트 목표
 
-본 프로젝트는 RAG(Retrieval-Augmented Generation) 시스템을 구축하여 복잡한 형태의 기업 및 정부 제안요청서(Request For Proposal, RFP) 내용을 효과적으로 추출하고 요약하여 필요한 정보를 제공하는 서비스를 개발하는 것을 목표로 합니다.
+본 프로젝트는 RAG(Retrieval-Augmented Generation) 시스템을 구축하여 Python Enhancement Proposals (PEP) 문서를 효과적으로 수집, 전처리, 임베딩하고, 사용자 질의에 대한 정확한 답변을 제공하는 서비스를 개발하는 것을 목표로 합니다.
 
 **핵심 목표:**
-- 좋은 동료를 얻어가며 함께 성장하기
-- 최선의 팀 프로젝트 결과물 완성하기
-- 협업을 잘 하는 엔지니어로 성장하기
+- 4명의 팀원이 독립적인 모듈을 개발하며 협업 경험 쌓기
+- 파일 해시 기반 증분 업데이트 시스템 구현
+- 더미 데이터 우선 개발 전략으로 빠른 프로토타이핑
+- 3개의 SQLite DB를 활용한 데이터 관리 시스템 구축
+- Streamlit 기반 사용자 친화적 UI 제공
 
 ### 1.2. 비즈니스 시나리오
 
-**입찰메이트 소개:**
+**Python 개발자 지원 도구:**
 
-입찰메이트는 B2G 입찰지원 전문 컨설팅 스타트업으로, 공공입찰 컨설팅 서비스를 제공합니다. 하루 수백 건의 RFP가 나라장터 등에서 공고되는데, 한 요청서당 수십 페이지가 넘는 문서를 기업 담당자들이 일일이 검토하는 것은 비효율적입니다.
+Python Enhancement Proposals (PEP)는 Python 언어의 새로운 기능, 개선 사항, 표준 라이브러리 변경 등을 제안하고 문서화하는 공식 문서입니다. 현재 수백 개의 PEP 문서가 존재하며, Python 개발자들이 특정 기능이나 표준을 이해하기 위해 관련 PEP를 찾고 읽는 것은 시간이 많이 소요됩니다.
 
 **비즈니스 문제:**
-- 대량의 RFP 문서 발생 (일 수백 건)
+- 500개 이상의 PEP 문서 존재
 - 문서당 수십 페이지 분량
-- 주요 요구 조건, 대상 기관, 예산, 제출 방식 등 핵심 정보 파악의 어려움
+- 특정 기능이나 표준에 대한 정보를 찾기 위해 여러 문서를 읽어야 함
+- 관련 PEP 간의 연관성 파악 어려움
+- 최신 Python 버전의 변경 사항 추적 복잡
 
 **솔루션 요구사항:**
 
-입찰메이트의 컨설턴트가 RFP의 핵심 정보를 빠르게 파악하고 고객사에게 적합한 입찰 기회를 추천할 수 있도록, 사용자의 요청에 따라 RFP 문서의 내용을 효과적으로 추출하고 요약하여 필요한 정보를 제공할 수 있는 사내 RAG 시스템을 구현합니다.
+Python 개발자가 특정 기능, 표준, 문법 등에 대한 질문을 자연어로 입력하면, 관련 PEP 문서를 검색하고 요약하여 필요한 정보를 제공하는 RAG 시스템을 구현합니다.
 
 ### 1.3. 프로젝트 기간 및 일정
 
-- **프로젝트 OT**: 프로젝트 기간 시작일
-- **프로젝트 본 기간**: OT 직후부터 프로젝트 기간 종료일 전일까지
-- **프로젝트 발표**: 프로젝트 기간 마감일
-- **발표 자료 제출 마감**: 종료일 D-1 19:00
-- **협업 일지 제출 마감**: 종료일 23:50
+- **프로젝트 기간**: 3주 (2025-11-08 ~ 2025-11-28)
+- **Week 1 (11/08-11/14)**: 프로젝트 기반 구축, DB 스키마, 더미 데이터, UI 프로토타입
+- **Week 2 (11/15-11/21)**: 핵심 기능 개발 (문서 처리, 임베딩, LLM 통합)
+- **Week 3 (11/22-11/28)**: 통합 테스트, 성능 최적화, 문서화, 발표 준비
+
+**주요 마일스톤:**
+- M1 (11/09): 프로젝트 초기 설정 완료
+- M2 (11/11): DB 스키마 및 더미 데이터 완성
+- M3 (11/14): UI 프로토타입 동작
+- M6 (11/21): 전체 모듈 통합 완료
+- M13 (11/28): 최종 발표 및 프로젝트 회고
 
 ---
 
 ## 2. 기술 스택 및 아키텍처
 
-본 프로젝트는 두 가지 기술 스택 시나리오를 모두 구현하고 비교 실험하는 것을 목표로 합니다.
+본 프로젝트는 4명의 팀원이 독립적으로 개발 가능한 모듈 구조를 가지며, 파일 해시값을 공통 키로 사용하여 데이터베이스 간 연결합니다.
 
 ```mermaid
 graph TB
-    A["사용자 질문"] --> B["시나리오 선택"]
-    B --> C["시나리오 A: 온프레미스"]
-    B --> D["시나리오 B: 클라우드 API"]
-    C --> E["GCP VM + L4 GPU"]
-    D --> F["OpenAI/Claude/Gemini API"]
-    E --> G["문서 처리"]
-    F --> G
-    G --> H["임베딩 생성"]
-    H --> I["벡터 DB 저장"]
-    I --> J["유사도 검색"]
-    J --> K["컨텍스트 생성"]
-    K --> L["LLM 응답 생성"]
-    L --> M["최종 답변"]
+    A["사용자 (Streamlit UI)"] --> B["개발자 4: UI 통합"]
+    B --> C["개발자 1: 문서 수집"]
+    B --> D["개발자 2: 임베딩 처리"]
+    B --> E["개발자 3: LLM 챗봇"]
+    C --> F["documents.db"]
+    D --> G["embeddings.db"]
+    D --> H["FAISS Index"]
+    E --> I["chat_history.db"]
+    F --> |"file_hash"| D
+    G --> |"embedding_hash"| E
+    H --> E
 ```
 
-### 2.1. 시나리오 A: GCP 온프레미스 기반
+### 2.0. 팀 역할 분담
 
-**장점:**
-- 비용 절감 가능 (장기적 관점)
-- 데이터 보안 및 프라이버시 강화
-- 모델 커스터마이징 자유도 높음
-- RAG 시스템 전체 구조 이해 가능
+| 역할 | 담당자 | 핵심 업무 |
+|------|--------|-----------|
+| 개발자 1 | [이름] | 문서 수집 및 원본 전처리 (PDF/HWP → Markdown 변환 및 DB 저장) |
+| 개발자 2 | [이름] | 임베딩 처리 (Markdown → 벡터 임베딩 및 FAISS 저장) |
+| 개발자 3 | [이름] | LLM 기반 정보 추출 및 요약 시스템 |
+| 개발자 4 | [이름] | Streamlit UI 개발 및 통합 |
 
-**단점:**
-- 초기 설정 복잡도 높음
-- 성능 최적화 어려움
-- GPU 메모리 제약 고려 필요
-- 추론 속도 상대적으로 느릴 수 있음
+### 2.1. 데이터베이스 설계
 
-**기술 스택:**
+본 프로젝트는 3개의 SQLite 데이터베이스를 사용하여 문서, 임베딩, 대화 히스토리를 관리합니다.
 
-| 구성 요소 | 기술 |
-|---------|------|
-| LLM 실행 | HuggingFace 모델 (LLaMa, Gemma, Mistral 등) |
-| 임베딩 | HuggingFace Sentence-Transformers |
-| 벡터 DB | FAISS, ChromaDB |
-| 문서 처리 | PyPDF2, python-docx, olefile (HWP) |
-| 프레임워크 | LangChain, LlamaIndex |
+#### 2.1.1. 원본 문서 DB (`documents.db`)
 
-### 2.2. 시나리오 B: 클라우드 API 기반
+**file_info 테이블:**
+- `file_hash` (TEXT, PRIMARY KEY): 원본 파일 해시값 (SHA-256)
+- `file_name` (TEXT): 파일명
+- `total_pages` (INTEGER): 총 페이지 수
+- `file_size` (INTEGER): 파일 크기 (bytes)
+- `total_chars` (INTEGER): 총 글자 수
+- `total_tokens` (INTEGER): 총 토큰 수 (GPT tokenizer 기준)
+- `created_at` (TIMESTAMP): 생성 시간
+- `updated_at` (TIMESTAMP): 수정 시간
 
-**장점:**
-- 빠른 프로토타이핑 가능
-- 높은 성능 보장
-- 인프라 관리 부담 없음
-- 최신 모델 즉시 활용 가능
+**page_data 테이블:**
+- `id` (INTEGER, PRIMARY KEY, AUTOINCREMENT)
+- `file_hash` (TEXT, FOREIGN KEY): 파일 해시값
+- `page_number` (INTEGER): 페이지 번호
+- `markdown_content` (TEXT): 마크다운 변환 내용
+- `token_count` (INTEGER): 페이지별 토큰 수
+- `is_empty` (BOOLEAN): 빈 페이지 여부
+- `created_at` (TIMESTAMP)
 
-**단점:**
-- API 호출 비용 발생
-- 데이터 외부 전송 필요
-- 모델 커스터마이징 제한
-- API 속도 제한(Rate Limit) 고려 필요
+#### 2.1.2. 임베딩 DB (`embeddings.db`)
 
-**기술 스택:**
+**embedding_meta 테이블:**
+- `embedding_hash` (TEXT, PRIMARY KEY): 임베딩 설정 해시값
+- `file_hash` (TEXT): 원본 파일 해시값
+- `chunk_size` (INTEGER): 청킹 크기
+- `chunk_overlap` (INTEGER): 청크 오버랩
+- `preprocessing_option` (TEXT): 전처리 옵션 (JSON)
+- `embedding_model` (TEXT): 임베딩 모델명
+- `total_chunks` (INTEGER): 총 청크 수
+- `faiss_index_path` (TEXT): FAISS 인덱스 파일 경로
+- `created_at` (TIMESTAMP)
+- `updated_at` (TIMESTAMP)
 
-| 구성 요소 | 기술 |
-|---------|------|
-| LLM 실행 | OpenAI (GPT-4, GPT-3.5), Claude, Gemini |
-| 임베딩 | OpenAI Embedding API, Cohere |
-| 벡터 DB | FAISS, ChromaDB, Supabase (pgvector) |
-| 문서 처리 | PyPDF2, python-docx, olefile (HWP) |
-| 프레임워크 | LangChain, LlamaIndex |
+**chunk_mapping 테이블:**
+- `chunk_id` (INTEGER, PRIMARY KEY, AUTOINCREMENT)
+- `embedding_hash` (TEXT, FOREIGN KEY): 임베딩 해시값
+- `file_hash` (TEXT): 원본 파일 해시값
+- `file_name` (TEXT): 파일명
+- `start_page` (INTEGER): 시작 페이지 번호
+- `end_page` (INTEGER): 종료 페이지 번호
+- `chunk_text` (TEXT): 청크 텍스트
+- `estimated_tokens` (INTEGER): 추정 토큰 수
+- `vector_index` (INTEGER): FAISS 벡터 인덱스
 
-**추천 모델 (OpenAI 기준):**
-- 기본 사용: `gpt-4o-mini`, `gpt-4o-nano`
-- 고성능 테스트: `gpt-4o` (제한적 사용)
-- 임베딩: `text-embedding-3-small`
+#### 2.1.3. 채팅 히스토리 DB (`chat_history.db`)
 
-### 2.3. 기술 스택 비교 분석
+**chat_sessions 테이블:**
+- `session_id` (TEXT, PRIMARY KEY): 브라우저 세션 ID
+- `session_name` (TEXT): 세션 이름
+- `created_at` (TIMESTAMP)
+- `updated_at` (TIMESTAMP)
+- `is_active` (BOOLEAN): 활성 상태
+
+**chat_messages 테이블:**
+- `message_id` (INTEGER, PRIMARY KEY, AUTOINCREMENT)
+- `session_id` (TEXT, FOREIGN KEY): 세션 ID
+- `role` (TEXT): 역할 (user/assistant)
+- `content` (TEXT): 메시지 내용
+- `retrieved_chunks` (TEXT): 검색된 청크 정보 (JSON)
+- `timestamp` (TIMESTAMP)
+
+### 2.2. 기술 스택
+
+본 프로젝트는 클라우드 API 기반으로 개발하며, 필요 시 로컬 모델로 전환 가능합니다.
+
+| 구성 요소 | 기술 | 담당자 |
+|---------|------|--------|
+| 문서 처리 | PyPDF2, pdfplumber, olefile (HWP) | 개발자 1 |
+| Markdown 변환 | Custom converter, BeautifulSoup | 개발자 1 |
+| 토큰 계산 | tiktoken (GPT tokenizer) | 개발자 1 |
+| 데이터베이스 | SQLite3 | 전체 팀 |
+| 텍스트 청킹 | LangChain RecursiveCharacterTextSplitter | 개발자 2 |
+| 임베딩 | OpenAI Embedding API (text-embedding-3-small) | 개발자 2 |
+| 벡터 DB | FAISS | 개발자 2 |
+| LLM | OpenAI API (gpt-4o-mini, gpt-4o) | 개발자 3 |
+| 프레임워크 | LangChain | 개발자 3 |
+| UI | Streamlit | 개발자 4 |
+| 버전 관리 | Git/GitHub | 전체 팀 |
+
+### 2.3. 핵심 처리 흐름
 
 ```mermaid
-graph LR
-    A["시나리오 선택 기준"] --> B["비용"]
-    A --> C["성능"]
-    A --> D["개발 속도"]
-    A --> E["학습 목적"]
+graph TD
+    A["Phase 1: 문서 수집"] --> B["PDF/HWP 파일"]
+    B --> C["파일 해시 계산"]
+    C --> D["Markdown 변환"]
+    D --> E["documents.db 저장"]
     
-    B --> F["A: 낮음 (장기)"]
-    B --> G["B: 높음 (사용량 기반)"]
+    E --> F["Phase 2: 임베딩 처리"]
+    F --> G["텍스트 청킹"]
+    G --> H["벡터 임베딩 생성"]
+    H --> I["FAISS 인덱스 구축"]
+    I --> J["embeddings.db 저장"]
     
-    C --> H["A: 중간"]
-    C --> I["B: 높음"]
+    J --> K["Phase 3: 정보 추출"]
+    K --> L["사용자 질의"]
+    L --> M["유사도 검색"]
+    M --> N["LLM 답변 생성"]
+    N --> O["chat_history.db 저장"]
     
-    D --> J["A: 느림"]
-    D --> K["B: 빠름"]
-    
-    E --> L["A: 전체 시스템 이해"]
-    E --> M["B: 빠른 프로토타입"]
+    O --> P["Phase 4: UI 표시"]
+    P --> Q["Streamlit 인터페이스"]
 ```
 
-**의사 결정 가이드:**
+#### Phase 1: 문서 수집 및 변환 (개발자 1)
+1. PDF/HWP 파일 수집
+2. 파일 해시 (SHA-256) 계산 및 중복 확인
+3. Markdown 변환 시 페이지 구분자 삽입
+   - 빈 페이지: `\n--- [빈페이지] ---\n`
+   - 일반 페이지: `\n\n--- 페이지 {page_num} ---\n\n`
+4. 기본 전처리 (연속된 개행 정리: `\n\n\n` → `\n\n`)
+5. GPT tokenizer로 토큰 수 계산
+6. `documents.db`에 저장
 
-1. **시나리오 B를 먼저 시도** (추천)
-   - 빠른 프로토타이핑으로 시스템 검증
-   - 베이스라인 성능 확보
-   - 이후 시나리오 A로 확장
+#### Phase 2: 임베딩 처리 (개발자 2)
+1. 마크다운 문서를 청킹 (chunk_size, chunk_overlap)
+2. 임베딩 전처리 옵션 적용
+   - Markdown 태그 제거 여부
+   - HTML 태그 제거 여부
+   - 표 구조 유지 여부
+3. 파일 해시로 변경사항 감지 (증분 업데이트)
+4. 벡터 임베딩 생성 및 FAISS 인덱스 구축
+5. 청크별 페이지 범위 및 토큰 수 추정 저장
+6. `embeddings.db` 및 FAISS 파일 저장
 
-2. **시나리오 A는 심화 단계에서 시도**
-   - 시스템 전체 이해도 향상
-   - 포트폴리오 차별화 포인트
-   - 성능은 낮더라도 학습 가치 높음
+#### Phase 3: 정보 추출 및 요약 (개발자 3)
+1. 사용자 질의 입력
+2. 질의 임베딩 생성
+3. FAISS에서 유사 청크 검색 (top-k)
+4. 검색된 청크로 LLM 프롬프트 구성
+5. LangChain 활용한 답변 생성
+6. 대화 내역을 `chat_history.db`에 저장
+
+#### Phase 4: UI 구현 (개발자 4)
+**왼쪽 사이드바:**
+- OpenAI API Key 입력
+- 데이터 업데이트 버튼
+- 임베딩 업데이트 버튼
+- 채팅 세션 관리
+
+**메인 영역:**
+- 채팅 인터페이스
+- 검색 결과 및 출처 표시
+- 히스토리 뷰어
 
 ---
 
 ## 3. RAG 시스템 구현 가이드
 
-### 3.1. 데이터 수집 및 전처리
+### 3.0. 개발 우선순위
+
+본 프로젝트는 **더미 데이터 우선 개발 전략**을 채택합니다.
+
+```mermaid
+graph LR
+    A["Step 1: 더미 데이터 생성"] --> B["Step 2: DB 스키마 구축"]
+    B --> C["Step 3: 모듈 구조 설계"]
+    C --> D["Step 4: UI 프로토타입"]
+    D --> E["Step 5: 기능 통합"]
+```
+
+#### Step 1: 더미 데이터 생성
+- AI를 활용하여 각 DB 스키마에 맞는 더미 데이터 3세트 생성
+- 실제 PEP 문서 구조를 반영한 샘플 markdown 생성
+
+#### Step 2: DB 스키마 구축
+- 3개 SQLite DB 생성 및 더미 데이터 삽입
+- 각 테이블 간 관계 검증
+
+#### Step 3: 모듈 구조 설계
+- 각 기능별 클래스 및 함수 인터페이스 정의
+- 모든 함수는 초기에 더미 데이터 반환
+
+#### Step 4: UI 프로토타입
+- 더미 데이터만으로 동작하는 Streamlit 앱 구현
+- 실제 기능 연결 전 UI/UX 검증
+
+#### Step 5: 기능 통합
+- 각 모듈의 실제 구현체 개발
+- 더미 함수를 실제 로직으로 대체
+- 통합 테스트
+
+### 3.1. 데이터 수집 및 전처리 (개발자 1)
 
 #### 3.1.1. 문서 포맷 처리
 
 **제공 데이터:**
-- 100개의 실제 RFP 문서
-- `data_list.csv`: 메타데이터 파일
-- 문서 포맷: HWP, PDF
+- PEP 문서 (온라인 수집 또는 제공된 샘플)
+- 문서 포맷: PDF, HTML
+
+**핵심 요구사항:**
+- 파일 해시 (SHA-256) 계산으로 중복 방지
+- 페이지 단위 구분자 삽입
+- 토큰 수 계산 (tiktoken 사용)
 
 **문서 로딩 구현:**
 
 ```python
-import os
+import hashlib
 from pathlib import Path
 import PyPDF2
-import olefile
+
+def calculate_file_hash(file_path):
+    """파일 SHA-256 해시 계산"""
+    sha256 = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        while chunk := f.read(8192):
+            sha256.update(chunk)
+    return sha256.hexdigest()
 
 def load_pdf(file_path):
-    """PDF 파일 텍스트 추출"""
+    """PDF 파일 텍스트 추출 (페이지별)"""
+    pages = []
     with open(file_path, 'rb') as file:
         reader = PyPDF2.PdfReader(file)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text()
-    return text
+        for page_num, page in enumerate(reader.pages, 1):
+            text = page.extract_text()
+            if text.strip():
+                pages.append(f"\n\n--- 페이지 {page_num} ---\n\n{text}")
+            else:
+                pages.append("\n--- [빈페이지] ---\n")
+    return pages
 
-def load_hwp(file_path):
-    """HWP 파일 텍스트 추출"""
-    ole = olefile.OleFileIO(file_path)
-    encoded_text = ole.openstream('PrvText').read()
-    text = encoded_text.decode('utf-16')
-    ole.close()
-    return text
-
-def load_document(file_path):
-    """통합 문서 로더"""
-    ext = Path(file_path).suffix.lower()
-    if ext == '.pdf':
-        return load_pdf(file_path)
-    elif ext == '.hwp':
-        return load_hwp(file_path)
-    else:
-        raise ValueError(f"지원하지 않는 파일 형식: {ext}")
+def basic_preprocessing(text):
+    """기본 전처리: 연속된 개행 정리"""
+    import re
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
 ```
 
-#### 3.1.2. 메타데이터 활용 전략
+#### 3.1.2. 데이터베이스 저장
 
-**메타데이터 구조 예시:**
-
-| 필드명 | 설명 | 활용 방법 |
-|-------|------|---------|
-| 사업명 | 입찰 사업 제목 | 문서 필터링, 검색 개선 |
-| 발주기관 | 발주 기관명 | 기관별 필터링 |
-| 예산 | 사업 예산 | 예산 범위 검색 |
-| 공고일 | 공고 날짜 | 시간 범위 필터링 |
-| 마감일 | 제출 마감일 | 긴급도 판단 |
-
-**메타데이터 통합 전략:**
+**documents.db 저장 구현:**
 
 ```python
-import pandas as pd
+import sqlite3
+import tiktoken
+from datetime import datetime
 
-def load_metadata(csv_path):
-    """메타데이터 로딩"""
-    df = pd.read_csv(csv_path, encoding='utf-8-sig')
-    return df
-
-def create_document_with_metadata(file_path, metadata_row):
-    """메타데이터와 함께 문서 객체 생성"""
-    text = load_document(file_path)
+def save_document_to_db(file_path, db_path='data/documents.db'):
+    """문서를 documents.db에 저장"""
     
-    document = {
-        'content': text,
-        'metadata': {
-            '사업명': metadata_row['사업명'],
-            '발주기관': metadata_row['발주기관'],
-            '예산': metadata_row['예산'],
-            '공고일': metadata_row['공고일'],
-            '파일명': metadata_row['파일명']
-        }
-    }
+    # 1. 파일 해시 계산
+    file_hash = calculate_file_hash(file_path)
     
-    return document
+    # 2. PDF 로드 및 전처리
+    pages = load_pdf(file_path)
+    
+    # 3. 토큰 수 계산
+    encoding = tiktoken.encoding_for_model("gpt-4")
+    total_tokens = 0
+    page_data = []
+    
+    for page_num, page_text in enumerate(pages, 1):
+        preprocessed = basic_preprocessing(page_text)
+        token_count = len(encoding.encode(preprocessed))
+        total_tokens += token_count
+        
+        page_data.append({
+            'page_number': page_num,
+            'markdown_content': preprocessed,
+            'token_count': token_count,
+            'is_empty': '[빈페이지]' in page_text
+        })
+    
+    # 4. DB 저장
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # file_info 저장
+    cursor.execute("""
+        INSERT OR REPLACE INTO file_info 
+        (file_hash, file_name, total_pages, file_size, total_chars, total_tokens, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        file_hash,
+        Path(file_path).name,
+        len(pages),
+        Path(file_path).stat().st_size,
+        sum(len(p['markdown_content']) for p in page_data),
+        total_tokens,
+        datetime.now(),
+        datetime.now()
+    ))
+    
+    # page_data 저장
+    for page in page_data:
+        cursor.execute("""
+            INSERT INTO page_data 
+            (file_hash, page_number, markdown_content, token_count, is_empty, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            file_hash,
+            page['page_number'],
+            page['markdown_content'],
+            page['token_count'],
+            page['is_empty'],
+            datetime.now()
+        ))
+    
+    conn.commit()
+    conn.close()
+    
+    return file_hash
 ```
 
-### 3.2. 문서 청킹 전략
+### 3.2. 문서 청킹 전략 (개발자 2)
 
 #### 3.2.1. 청크 크기 최적화
 
@@ -285,27 +438,46 @@ def create_document_with_metadata(file_path, metadata_row):
 
 ```mermaid
 graph TD
-    A["원본 문서"] --> B["청킹 전략 선택"]
-    B --> C["고정 크기 청킹"]
-    B --> D["의미 단위 청킹"]
-    B --> E["하이브리드 청킹"]
-    
-    C --> F["chunk_size 설정"]
-    C --> G["chunk_overlap 설정"]
-    
-    D --> H["섹션 기반 분할"]
-    D --> I["문단 기반 분할"]
-    
-    E --> J["고정 + 의미 결합"]
+    A["documents.db에서 로드"] --> B["텍스트 청킹"]
+    B --> C["페이지 범위 추적"]
+    C --> D["임베딩 생성"]
+    D --> E["FAISS 인덱스"]
+    E --> F["embeddings.db 저장"]
 ```
 
-**고정 크기 청킹 (기본):**
+**고정 크기 청킹 구현:**
 
 ```python
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+import sqlite3
+import tiktoken
 
-def create_chunks(text, chunk_size=1000, chunk_overlap=200):
-    """고정 크기 청킹"""
+def load_markdown_from_db(file_hash, db_path='data/documents.db'):
+    """documents.db에서 마크다운 로드"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT page_number, markdown_content 
+        FROM page_data 
+        WHERE file_hash = ? 
+        ORDER BY page_number
+    """, (file_hash,))
+    
+    pages = cursor.fetchall()
+    conn.close()
+    
+    # 전체 텍스트 결합
+    full_text = "\n\n".join([page[1] for page in pages])
+    return full_text
+
+def create_chunks_with_metadata(file_hash, chunk_size=1000, chunk_overlap=200):
+    """청킹 with 페이지 범위 추적"""
+    
+    # 1. 마크다운 로드
+    full_text = load_markdown_from_db(file_hash)
+    
+    # 2. 청킹
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -313,8 +485,29 @@ def create_chunks(text, chunk_size=1000, chunk_overlap=200):
         separators=["\n\n", "\n", " ", ""]
     )
     
-    chunks = text_splitter.split_text(text)
-    return chunks
+    chunks = text_splitter.split_text(full_text)
+    
+    # 3. 페이지 범위 추적 (페이지 구분자 기반)
+    chunk_metadata = []
+    encoding = tiktoken.encoding_for_model("gpt-4")
+    
+    for i, chunk in enumerate(chunks):
+        # 페이지 번호 추출
+        import re
+        page_numbers = re.findall(r'--- 페이지 (\d+) ---', chunk)
+        
+        start_page = int(page_numbers[0]) if page_numbers else 1
+        end_page = int(page_numbers[-1]) if page_numbers else start_page
+        
+        chunk_metadata.append({
+            'chunk_id': i,
+            'chunk_text': chunk,
+            'start_page': start_page,
+            'end_page': end_page,
+            'estimated_tokens': len(encoding.encode(chunk))
+        })
+    
+    return chunk_metadata
 ```
 
 **청크 크기 가이드라인:**
@@ -328,72 +521,56 @@ def create_chunks(text, chunk_size=1000, chunk_overlap=200):
 **청크 오버랩 설정:**
 
 $$
-\text{Overlap Ratio} = \frac{\text{chunk\_overlap}}{\text{chunk\_size}} \approx 0.1 \sim 0.2
+\text{Overlap Ratio} = \frac{\text{chunk\ overlap}}{\text{chunk\ size}} \approx 10\% \sim 20\%
 $$
 
 권장 오버랩 비율은 10-20%입니다. 너무 높으면 저장 공간 낭비, 너무 낮으면 문맥 손실이 발생합니다.
 
-#### 3.2.2. 의미 단위 기반 청킹 (심화)
+#### 3.2.2. 전처리 옵션 (개발자 2)
 
-**RFP 문서 구조 활용:**
-
-RFP 문서는 일반적으로 다음과 같은 구조를 가집니다:
-
-1. 사업 개요
-2. 사업 목적 및 범위
-3. 과업 내용
-4. 기술 요구사항
-5. 제안 요청사항
-6. 평가 기준
-7. 제출 방법 및 일정
+**임베딩 전 전처리 전략:**
 
 ```python
 import re
+import json
 
-def semantic_chunking(text):
-    """의미 단위 기반 청킹"""
-    # RFP 문서의 섹션 구분자 패턴
-    section_patterns = [
-        r'^\d+\.\s+[가-힣\s]+',  # 1. 사업 개요
-        r'^[가-힣]\.\s+[가-힣\s]+',  # 가. 세부 항목
-        r'^\([가-힣]\)\s+[가-힣\s]+'  # (가) 세부 항목
-    ]
+def apply_preprocessing(text, options):
+    """전처리 옵션 적용"""
     
-    chunks = []
-    current_chunk = ""
+    # Markdown 태그 제거
+    if options.get('remove_markdown', False):
+        text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)  # Bold
+        text = re.sub(r'\*(.+?)\*', r'\1', text)      # Italic
+        text = re.sub(r'##?\s+(.+?)$', r'\1', text, flags=re.MULTILINE)  # Headers
     
-    for line in text.split('\n'):
-        is_section_start = any(re.match(pattern, line.strip()) 
-                              for pattern in section_patterns)
-        
-        if is_section_start and len(current_chunk) > 100:
-            chunks.append(current_chunk.strip())
-            current_chunk = line
-        else:
-            current_chunk += "\n" + line
+    # HTML 태그 제거
+    if options.get('remove_html', False):
+        text = re.sub(r'<[^>]+>', '', text)
     
-    if current_chunk:
-        chunks.append(current_chunk.strip())
+    # 페이지 구분자 제거 (임베딩 시)
+    if options.get('remove_page_markers', True):
+        text = re.sub(r'--- 페이지 \d+ ---', '', text)
+        text = re.sub(r'--- \[빈페이지\] ---', '', text)
     
-    return chunks
+    return text.strip()
+
+def calculate_embedding_hash(file_hash, chunk_size, chunk_overlap, preprocessing_option):
+    """임베딩 설정 해시 계산"""
+    import hashlib
+    
+    config_str = f"{file_hash}_{chunk_size}_{chunk_overlap}_{json.dumps(preprocessing_option, sort_keys=True)}"
+    return hashlib.sha256(config_str.encode()).hexdigest()
 ```
 
-### 3.3. 임베딩 및 벡터 DB 구축
+### 3.3. 임베딩 및 벡터 DB 구축 (개발자 2)
 
 #### 3.3.1. 임베딩 모델 선정
 
-**임베딩 모델 비교:**
-
-| 모델 | 차원 | 성능 | 속도 | 비용 | 권장 시나리오 |
-|------|-----|------|------|------|-------------|
-| text-embedding-3-small | 1536 | 높음 | 빠름 | 낮음 | 시나리오 B |
-| sentence-transformers/paraphrase-multilingual-mpnet-base-v2 | 768 | 중간 | 중간 | 무료 | 시나리오 A |
-| intfloat/multilingual-e5-large | 1024 | 높음 | 느림 | 무료 | 시나리오 A (고성능) |
-
-**시나리오 B 구현 (OpenAI):**
+**OpenAI Embedding API 사용:**
 
 ```python
 from openai import OpenAI
+import numpy as np
 
 client = OpenAI(api_key="YOUR_API_KEY")
 
@@ -405,137 +582,164 @@ def get_embedding(text, model="text-embedding-3-small"):
         model=model
     )
     return response.data[0].embedding
+
+def batch_get_embeddings(texts, model="text-embedding-3-small", batch_size=100):
+    """배치 임베딩 생성"""
+    embeddings = []
+    
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i+batch_size]
+        batch_clean = [t.replace("\n", " ") for t in batch]
+        
+        response = client.embeddings.create(
+            input=batch_clean,
+            model=model
+        )
+        
+        embeddings.extend([data.embedding for data in response.data])
+    
+    return embeddings
 ```
 
-**시나리오 A 구현 (HuggingFace):**
+#### 3.3.2. FAISS 인덱스 및 embeddings.db 저장
 
-```python
-from sentence_transformers import SentenceTransformer
-
-model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
-
-def get_embedding_local(text):
-    """로컬 임베딩 생성"""
-    embedding = model.encode(text, convert_to_tensor=False)
-    return embedding.tolist()
-```
-
-#### 3.3.2. 벡터 DB 구현
-
-**FAISS 구현 (권장):**
+**통합 임베딩 파이프라인:**
 
 ```python
 import faiss
 import numpy as np
-import pickle
+import sqlite3
+import json
+from datetime import datetime
 
-class VectorStore:
-    def __init__(self, dimension=1536):
-        """벡터 스토어 초기화"""
-        self.dimension = dimension
-        self.index = faiss.IndexFlatL2(dimension)
-        self.documents = []
-        self.metadatas = []
+def create_and_save_embeddings(file_hash, chunk_size=1000, chunk_overlap=200, 
+                                preprocessing_options=None, model="text-embedding-3-small"):
+    """임베딩 생성 및 저장"""
     
-    def add_documents(self, texts, embeddings, metadatas):
-        """문서 추가"""
-        embeddings_np = np.array(embeddings).astype('float32')
-        self.index.add(embeddings_np)
-        self.documents.extend(texts)
-        self.metadatas.extend(metadatas)
+    if preprocessing_options is None:
+        preprocessing_options = {'remove_page_markers': True}
     
-    def search(self, query_embedding, k=5):
-        """유사도 검색"""
-        query_np = np.array([query_embedding]).astype('float32')
-        distances, indices = self.index.search(query_np, k)
-        
-        results = []
-        for i, idx in enumerate(indices[0]):
-            if idx < len(self.documents):
-                results.append({
-                    'text': self.documents[idx],
-                    'metadata': self.metadatas[idx],
-                    'distance': distances[0][i]
-                })
-        
-        return results
+    # 1. 임베딩 해시 계산
+    embedding_hash = calculate_embedding_hash(
+        file_hash, chunk_size, chunk_overlap, preprocessing_options
+    )
     
-    def save(self, path):
-        """벡터 DB 저장"""
-        faiss.write_index(self.index, f"{path}/faiss.index")
-        with open(f"{path}/documents.pkl", 'wb') as f:
-            pickle.dump({
-                'documents': self.documents,
-                'metadatas': self.metadatas
-            }, f)
+    # 2. 청킹
+    chunk_metadata = create_chunks_with_metadata(file_hash, chunk_size, chunk_overlap)
     
-    def load(self, path):
-        """벡터 DB 로드"""
-        self.index = faiss.read_index(f"{path}/faiss.index")
-        with open(f"{path}/documents.pkl", 'rb') as f:
-            data = pickle.load(f)
-            self.documents = data['documents']
-            self.metadatas = data['metadatas']
-```
-
-**ChromaDB 구현 (대안):**
-
-```python
-import chromadb
-from chromadb.config import Settings
-
-def create_chroma_collection():
-    """ChromaDB 컬렉션 생성"""
-    client = chromadb.Client(Settings(
-        chroma_db_impl="duckdb+parquet",
-        persist_directory="./chroma_db"
+    # 3. 전처리 및 임베딩 생성
+    processed_texts = [
+        apply_preprocessing(chunk['chunk_text'], preprocessing_options)
+        for chunk in chunk_metadata
+    ]
+    
+    embeddings = batch_get_embeddings(processed_texts, model=model)
+    
+    # 4. FAISS 인덱스 구축
+    dimension = len(embeddings[0])
+    index = faiss.IndexFlatL2(dimension)
+    embeddings_np = np.array(embeddings).astype('float32')
+    index.add(embeddings_np)
+    
+    # 5. FAISS 인덱스 저장
+    faiss_path = f"data/vectorstore/faiss_{embedding_hash}.index"
+    faiss.write_index(index, faiss_path)
+    
+    # 6. embeddings.db 저장
+    conn = sqlite3.connect('data/embeddings.db')
+    cursor = conn.cursor()
+    
+    # embedding_meta 저장
+    cursor.execute("""
+        INSERT OR REPLACE INTO embedding_meta
+        (embedding_hash, file_hash, chunk_size, chunk_overlap, preprocessing_option,
+         embedding_model, total_chunks, faiss_index_path, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        embedding_hash, file_hash, chunk_size, chunk_overlap,
+        json.dumps(preprocessing_options), model, len(chunk_metadata),
+        faiss_path, datetime.now(), datetime.now()
     ))
     
-    collection = client.create_collection(
-        name="rfp_documents",
-        metadata={"description": "RFP 문서 벡터 저장소"}
-    )
+    # chunk_mapping 저장
+    # file_name은 documents.db에서 조회
+    conn_doc = sqlite3.connect('data/documents.db')
+    cursor_doc = conn_doc.cursor()
+    cursor_doc.execute("SELECT file_name FROM file_info WHERE file_hash = ?", (file_hash,))
+    file_name = cursor_doc.fetchone()[0]
+    conn_doc.close()
     
-    return collection
-
-def add_to_chroma(collection, texts, embeddings, metadatas):
-    """ChromaDB에 문서 추가"""
-    ids = [f"doc_{i}" for i in range(len(texts))]
+    for i, chunk in enumerate(chunk_metadata):
+        cursor.execute("""
+            INSERT INTO chunk_mapping
+            (embedding_hash, file_hash, file_name, start_page, end_page, 
+             chunk_text, estimated_tokens, vector_index)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            embedding_hash, file_hash, file_name,
+            chunk['start_page'], chunk['end_page'],
+            chunk['chunk_text'], chunk['estimated_tokens'], i
+        ))
     
-    collection.add(
-        documents=texts,
-        embeddings=embeddings,
-        metadatas=metadatas,
-        ids=ids
-    )
+    conn.commit()
+    conn.close()
+    
+    return embedding_hash
 ```
 
-### 3.4. Retrieval 시스템 구현
+### 3.4. Retrieval 시스템 구현 (개발자 2 → 개발자 3)
 
-#### 3.4.1. 베이스라인 Retrieval
-
-**기본 유사도 검색:**
+#### 3.4.1. 기본 검색 함수
 
 ```python
-def naive_retrieval(query, vector_store, embedding_function, k=5):
-    """베이스라인 검색"""
-    # 1. 쿼리 임베딩
-    query_embedding = embedding_function(query)
+import faiss
+import sqlite3
+
+def search_similar_chunks(query, embedding_hash, top_k=5):
+    """유사 청크 검색"""
     
-    # 2. 유사도 검색
-    results = vector_store.search(query_embedding, k=k)
+    # 1. 질의 임베딩 생성
+    query_embedding = get_embedding(query)
     
-    # 3. 결과 반환
+    # 2. FAISS 인덱스 로드
+    conn = sqlite3.connect('data/embeddings.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT faiss_index_path 
+        FROM embedding_meta 
+        WHERE embedding_hash = ?
+    """, (embedding_hash,))
+    
+    faiss_path = cursor.fetchone()[0]
+    index = faiss.read_index(faiss_path)
+    
+    # 3. 유사도 검색
+    query_np = np.array([query_embedding]).astype('float32')
+    distances, indices = index.search(query_np, top_k)
+    
+    # 4. 메타데이터 조회
+    results = []
+    for i, idx in enumerate(indices[0]):
+        cursor.execute("""
+            SELECT file_name, start_page, end_page, chunk_text
+            FROM chunk_mapping
+            WHERE embedding_hash = ? AND vector_index = ?
+        """, (embedding_hash, int(idx)))
+        
+        row = cursor.fetchone()
+        if row:
+            results.append({
+                'file_name': row[0],
+                'start_page': row[1],
+                'end_page': row[2],
+                'chunk_text': row[3],
+                'distance': float(distances[0][i])
+            })
+    
+    conn.close()
     return results
 ```
-
-**유사도 계산 방식:**
-
-$$
-\text{Cosine Similarity} = \frac{\mathbf{A} \cdot \mathbf{B}}{||\mathbf{A}|| \cdot ||\mathbf{B}||}
-$$
-
-FAISS는 기본적으로 L2 거리를 사용하지만, 코사인 유사도로 변환 가능합니다.
 
 #### 3.4.2. 메타데이터 필터링
 
@@ -678,20 +882,33 @@ def mmr_retrieval(query, vector_store, embedding_function, k=5, lambda_param=0.5
     return selected
 ```
 
-### 3.5. Generation 시스템 구현
+### 3.5. Generation 시스템 구현 (개발자 3)
 
-#### 3.5.1. LLM 모델 선정
+#### 3.5.1. LLM 답변 생성
 
-**시나리오 B (OpenAI API):**
+**OpenAI API 사용:**
 
 ```python
 from openai import OpenAI
+import sqlite3
+from datetime import datetime
 
 client = OpenAI(api_key="YOUR_API_KEY")
 
-def generate_response(context, query, model="gpt-4o-mini", temperature=0.3, max_tokens=1000):
-    """OpenAI 응답 생성"""
-    prompt = f"""다음 문서 내용을 바탕으로 질문에 답변해주세요.
+def generate_response(query, session_id, embedding_hash, model="gpt-4o-mini", top_k=5):
+    """RAG 기반 답변 생성"""
+    
+    # 1. 유사 청크 검색
+    retrieved_chunks = search_similar_chunks(query, embedding_hash, top_k=top_k)
+    
+    # 2. 컨텍스트 구성
+    context = "\n\n---\n\n".join([
+        f"[{chunk['file_name']} (페이지 {chunk['start_page']}-{chunk['end_page']})]\n{chunk['chunk_text']}"
+        for chunk in retrieved_chunks
+    ])
+    
+    # 3. 프롬프트 생성
+    prompt = f"""다음 PEP 문서 내용을 바탕으로 질문에 답변해주세요.
 
 문서 내용:
 {context}
@@ -700,62 +917,48 @@ def generate_response(context, query, model="gpt-4o-mini", temperature=0.3, max_
 
 답변:"""
     
+    # 4. LLM 호출
     response = client.chat.completions.create(
         model=model,
         messages=[
-            {"role": "system", "content": "당신은 RFP 문서 분석 전문가입니다."},
+            {"role": "system", "content": "당신은 Python PEP 문서 분석 전문가입니다."},
             {"role": "user", "content": prompt}
         ],
-        temperature=temperature,
-        max_tokens=max_tokens
+        temperature=0.3,
+        max_tokens=1000
     )
     
-    return response.choices[0].message.content
-```
-
-**시나리오 A (HuggingFace Transformers):**
-
-```python
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
-
-class LocalLLM:
-    def __init__(self, model_name="beomi/Llama-3-Open-Ko-8B"):
-        """로컬 LLM 초기화"""
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
-        )
+    answer = response.choices[0].message.content
     
-    def generate(self, context, query, max_new_tokens=1000, temperature=0.3):
-        """응답 생성"""
-        prompt = f"""다음 문서 내용을 바탕으로 질문에 답변해주세요.
+    # 5. chat_history.db 저장
+    save_chat_message(session_id, query, answer, retrieved_chunks)
+    
+    return {
+        'answer': answer,
+        'sources': retrieved_chunks
+    }
 
-문서 내용:
-{context}
-
-질문: {query}
-
-답변:"""
-        
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
-        
-        outputs = self.model.generate(
-            **inputs,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            do_sample=True,
-            top_p=0.9
-        )
-        
-        response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # 프롬프트 제거 후 답변만 추출
-        answer = response.split("답변:")[-1].strip()
-        
-        return answer
+def save_chat_message(session_id, query, answer, retrieved_chunks):
+    """대화 내역 저장"""
+    import json
+    
+    conn = sqlite3.connect('data/chat_history.db')
+    cursor = conn.cursor()
+    
+    # 사용자 메시지 저장
+    cursor.execute("""
+        INSERT INTO chat_messages (session_id, role, content, retrieved_chunks, timestamp)
+        VALUES (?, ?, ?, ?, ?)
+    """, (session_id, 'user', query, None, datetime.now()))
+    
+    # 어시스턴트 메시지 저장
+    cursor.execute("""
+        INSERT INTO chat_messages (session_id, role, content, retrieved_chunks, timestamp)
+        VALUES (?, ?, ?, ?, ?)
+    """, (session_id, 'assistant', answer, json.dumps(retrieved_chunks), datetime.now()))
+    
+    conn.commit()
+    conn.close()
 ```
 
 #### 3.5.2. 프롬프트 엔지니어링
@@ -1306,141 +1509,109 @@ def create_optimized_index(embeddings, use_gpu=True):
 
 ### 5.1. 역할 분담 가이드
 
-**권장 역할 구조:**
+**팀 역할 구조:**
 
-| 역할 | 주요 책임 | 필요 스킬 |
-|------|---------|---------|
-| Project Manager | 일정 관리, 회의 주도, 성능 평가 담당 | 커뮤니케이션, 조율 능력 |
-| 데이터 처리 담당 | 문서 로딩, 메타데이터 처리, 청킹 전략 | Python, 데이터 전처리 |
-| Retrieval 담당 | 임베딩, 벡터 DB, 검색 알고리즘 | ML/DL, 벡터 DB 경험 |
-| Generation 담당 | LLM 선정, 프롬프트 엔지니어링, 대화 관리 | NLP, LLM 프롬팅 |
+| 역할 | 담당자 | 핵심 업무 | 주요 산출물 |
+|------|--------|-----------|------------|
+| 개발자 1 | [이름] | 문서 수집 및 원본 전처리 | documents.db, 변환 스크립트 |
+| 개발자 2 | [이름] | 임베딩 처리 및 검색 | embeddings.db, FAISS 인덱스, 검색 API |
+| 개발자 3 | [이름] | LLM 챗봇 및 대화 관리 | chat_history.db, RAG 파이프라인 |
+| 개발자 4 | [이름] | UI 개발 및 통합 | Streamlit 앱, 통합 테스트 |
 
-**역할 할당 예시 (4인 팀):**
+**모듈 간 인터페이스:**
 
-```python
-team_roles = {
-    '팀원A': ['Project Manager', '성능 평가'],
-    '팀원B': ['데이터 처리', '문서 청킹'],
-    '팀원C': ['Retrieval', '벡터 DB'],
-    '팀원D': ['Generation', '프롬프트 엔지니어링']
-}
+```mermaid
+graph LR
+    A["개발자 1"] -->|"file_hash"| B["개발자 2"]
+    B -->|"embedding_hash"| C["개발자 3"]
+    C -->|"session_id"| D["개발자 4"]
+    D -->|"사용자 입력"| A
 ```
 
 **협업 원칙:**
-1. 역할은 유연하게 조정 가능
-2. 모든 팀원이 전체 파이프라인 이해 필요
-3. 주 2-3회 코드 리뷰 세션
-4. 일일 스탠드업 미팅 (15분)
+1. **파일 해시 중심 설계**: 모든 모듈은 file_hash로 연결
+2. **독립적 개발**: 각 개발자는 자신의 DB만 관리
+3. **더미 우선 개발**: UI와 로직을 병렬 개발
+4. **주간 통합 미팅**: 모듈 간 연동 확인
+5. **코드 리뷰**: 주 2회 페어 프로그래밍
 
 ### 5.2. 협업 일지 작성 방법
 
-**협업 일지 구조:**
+**협업 일지 구조 (docs/협업일지/[이름]/Day_N.md):**
 
 ```markdown
-# [날짜] 협업 일지
+# [날짜] 협업 일지 - [이름]
 
 ## 오늘의 목표
 - [ ] 목표 1
 - [ ] 목표 2
-- [ ] 목표 3
 
 ## 진행 상황
 
 ### 완료한 작업
-1. 작업 내용 1
-   - 구체적인 설명
-   - 관련 코드/파일
-   - 결과/성과
-
-2. 작업 내용 2
-   ...
+1. [구체적인 작업 내용]
+   - 관련 파일: [파일 경로]
+   - 결과: [성과 설명]
 
 ### 진행 중인 작업
-- 작업 내용
-- 현재 진행률
-- 예상 완료 시점
+- [작업 내용] (진행률: 50%)
 
-### 블로커 (막힌 부분)
-- 문제 상황
-- 시도한 해결 방법
-- 필요한 도움
+### 블로커
+- [문제 상황]
+- [시도한 해결 방법]
 
 ## 팀 기여
-
-### 내가 제안한 아이디어
-- 아이디어 내용
-- 팀의 반응
-- 채택 여부 및 이유
-
-### 팀원 지원
-- 누구를 어떻게 도왔는지
-- 코드 리뷰/피드백 제공
-
-### 회의 참여
-- 회의 주제
-- 내가 제시한 의견
-- 결정된 사항
+- [팀원 지원 내역]
+- [코드 리뷰 참여]
 
 ## 학습 내용
-- 새로 알게 된 기술/지식
-- 발생한 이슈와 해결 방법
-- 인사이트
+- [새로 배운 기술/지식]
 
 ## 내일 계획
-- 진행할 작업
-- 예상 소요 시간
-
-## 회고
-- 오늘의 성과
-- 아쉬운 점
-- 개선 방향
+- [진행할 작업]
 ```
-
-**작성 팁:**
-1. **매일 작성**: 작업 시작 전 목표 설정, 종료 후 회고
-2. **구체성**: "코드 작성함" (X) → "FAISS 인덱스 생성 함수 구현, 100개 문서 임베딩 완료" (O)
-3. **정직성**: 완벽한 정리보다 진솔한 기록이 중요
-4. **시각 자료**: 스크린샷, 성능 그래프 등 포함
 
 ### 5.3. 타임라인 관리
 
-**프로젝트 일정 예시 (2주 기준):**
+**프로젝트 일정 (3주, 2025-11-08 ~ 2025-11-28):**
 
 ```mermaid
 gantt
-    title RAG 프로젝트 타임라인
+    title RAG PEP 프로젝트 타임라인 (3주)
     dateFormat  YYYY-MM-DD
-    section 준비
-    환경 설정           :a1, 2025-01-01, 1d
-    데이터 확인         :a2, after a1, 1d
-    section 개발
-    문서 전처리        :b1, after a2, 2d
-    임베딩 및 벡터DB   :b2, after b1, 2d
-    Retrieval 구현     :b3, after b2, 2d
-    Generation 구현    :b4, after b3, 2d
-    section 최적화
-    성능 평가         :c1, after b4, 2d
-    고도화            :c2, after c1, 2d
-    section 마무리
-    보고서 작성       :d1, after c2, 1d
-    발표 준비         :d2, after d1, 1d
+    
+    section Week 1: 기반 구축
+    환경 설정 및 초기화        :w1d1, 2025-11-08, 1d
+    더미 데이터 생성           :w1d2, after w1d1, 1d
+    DB 스키마 구축             :w1d3, after w1d2, 2d
+    UI 프로토타입 개발         :w1d4, after w1d3, 2d
+    Week 1 통합 테스트         :milestone, m1, after w1d4, 0d
+    
+    section Week 2: 핵심 기능 개발
+    문서 수집 및 변환 (개발자1) :w2d1, 2025-11-15, 3d
+    임베딩 처리 (개발자2)       :w2d2, 2025-11-15, 3d
+    LLM 챗봇 개발 (개발자3)     :w2d3, 2025-11-15, 3d
+    UI 통합 개발 (개발자4)      :w2d4, 2025-11-15, 3d
+    모듈 통합 작업              :w2d5, after w2d1, 3d
+    Week 2 통합 완료            :milestone, m2, after w2d5, 0d
+    
+    section Week 3: 최적화 및 마무리
+    전체 통합 테스트           :w3d1, 2025-11-22, 2d
+    성능 평가 및 최적화        :w3d2, after w3d1, 2d
+    문서화 및 README           :w3d3, after w3d2, 1d
+    발표 자료 준비             :w3d4, after w3d3, 1d
+    최종 발표                  :milestone, m3, 2025-11-28, 0d
 ```
 
-**주간 체크리스트:**
+**3주 일정 요약:**
 
-**Week 1:**
-- [ ] GCP VM 설정 완료
-- [ ] 문서 로딩 파이프라인 구현
-- [ ] 청킹 전략 실험 (최소 3가지)
-- [ ] 임베딩 및 벡터 DB 구축
-- [ ] 베이스라인 RAG 시스템 동작 확인
+| 주차 | 기간 | 주요 목표 | 마일스톤 |
+|------|------|-----------|---------|
+| Week 1 | 11/08-11/14 | 프로젝트 기반 구축 | M1-M3: 초기 설정, DB, UI 프로토타입 |
+| Week 2 | 11/15-11/21 | 핵심 기능 개발 | M4-M6: 문서 처리, 임베딩, LLM 통합 |
+| Week 3 | 11/22-11/28 | 통합, 테스트, 배포 | M7-M13: 통합, 최적화, 문서화, 발표 |
 
-**Week 2:**
-- [ ] 메타데이터 필터링 구현
-- [ ] Generation 품질 개선
-- [ ] 고급 검색 기법 적용 (최소 1가지)
-- [ ] 성능 평가 완료
-- [ ] 시나리오 A/B 비교 분석
+**주간 체크리스트는 [프로젝트 체크리스트](./프로젝트_체크리스트.md) 참조**
 
 ---
 
@@ -1448,183 +1619,65 @@ gantt
 
 ### 6.1. 과정 중 평가
 
-**평가자**: 멘토
-**평가 단위**: 개인
-**평가 시점**: 프로젝트 종료 전 마지막 일요일 23:59
+**평가 항목:**
 
-| 평가 항목 | 배점 | 평가 기준 |
-|---------|------|---------|
-| 적극성 | 25점 | 질문, 제안, 실험 등 능동적 참여도 |
-| 문제 해결 능력 | 25점 | 기술적 이슈 해결 과정 및 결과 |
-| 의사소통 능력 | 25점 | 팀원과의 소통, 피드백 제공 |
-| 성장 가능성 | 25점 | 학습 태도, 개선 의지 |
+| 항목 | 평가 기준 |
+|------|---------|
+| 적극성 | 질문, 제안, 실험 등 능동적 참여도 |
+| 문제 해결 능력 | 기술적 이슈 해결 과정 및 결과 |
+| 의사소통 능력 | 팀원과의 소통, 피드백 제공 |
+| 협업 태도 | 팀 기여도, 일정 준수 |
 
 ### 6.2. 결과 평가
 
-#### 6.2.1. 팀 단위 평가
-
-**평가자**: 주강사
-**평가 시점**: 최종 발표 직후
+#### 팀 단위 평가
 
 | 평가 항목 | 세부 기준 |
 |---------|---------|
 | 프로젝트 기획 | 주제 적합성, 요구사항 이해도 |
-| 데이터 전처리 | 문서 처리 완성도, 메타데이터 활용 |
-| 모델 설계 | RAG 아키텍처 설계, 기술 스택 선정 근거 |
-| 모델 평가 | 평가 지표 설계, 성능 분석 |
+| 시스템 설계 | DB 설계, 모듈 구조, 파일 해시 기반 연결 |
+| 구현 완성도 | 4개 모듈 통합, 기능 동작 여부 |
 | 코드 품질 | 가독성, 문서화, 재현성 |
-| 결과 해석 | 비즈니스 시사점, 개선 방향 제시 |
-| 발표 | 논리적 흐름, 핵심 전달력 |
+| 성능 | 문서 처리 속도, 검색 정확도, 답변 품질 |
+| 발표 | 논리적 흐름, 핵심 전달력, 데모 |
 
-#### 6.2.2. 개인 단위 평가
-
-**평가자**: 주강사
-**평가 시점**: 최종 발표 직후
+#### 개인 단위 평가
 
 | 평가 항목 | 세부 기준 |
 |---------|---------|
-| 주제 선정 | 아이디어 제시, 의견 제시 |
-| 전처리 및 탐색 | 담당 작업 품질 |
-| 모델 훈련 및 평가 | 기여도 및 완성도 |
-| 업무 수행 | 타임라인 준수, 책임감 |
+| 담당 모듈 완성도 | 개발자별 모듈 구현 품질 |
+| 협업 일지 | 작성 완성도, 구체성, 성찰 |
+| 팀 기여도 | 타 모듈 지원, 코드 리뷰 참여 |
 | 발표 참여 | 발표 또는 질의응답 기여 |
-
-**평가 기준**: 협업 일지, 발표 참여 내역
 
 ### 6.3. 결과물 제출 가이드
 
-#### 6.3.1. 제출 항목
+#### 제출 항목
 
 **1. GitHub Repository (팀 단위)**
-- **제출 마감**: 종료일 D-1 19:00
-- **필수 포함 사항**:
-  - `README.md`: 프로젝트 개요, 설치 방법, 실행 방법
-  - 소스 코드
-  - `requirements.txt` 또는 `environment.yml`
-  - 데이터 전처리 스크립트
-  - 평가 스크립트
-  - `.gitignore` (API 키 제외 확인)
+- `README.md`: 프로젝트 개요, 설치 및 실행 방법
+- 소스 코드 (src/, scripts/)
+- DB 스키마 (SQL 파일)
+- `requirements.txt`
+- `.gitignore` (API 키 제외 확인)
 
 **2. 보고서 (팀 단위)**
-- **제출 마감**: 종료일 D-1 19:00
-- **형식**: PDF
-- **필수 포함 사항**:
-  - 프로젝트 개요 및 목표
-  - 기술 스택 및 아키텍처
-  - 데이터 전처리 과정
-  - RAG 시스템 구현 상세
-  - 성능 평가 결과
-  - 의사 결정 과정
-  - 개선 방향 및 한계점
+- 프로젝트 개요 및 목표
+- 시스템 아키텍처 (3개 DB, 4개 모듈)
+- 구현 상세 (개발자별 담당 모듈)
+- 성능 평가 결과
+- 의사 결정 과정
+- 개선 방향 및 한계점
 
 **3. 협업 일지 (개인 단위)**
-- **제출 마감**: 종료일 23:50
-- **형식**: PDF 또는 링크 (Notion, 블로그 등)
-- **README.md에 링크 포함**
+- docs/협업일지/[이름]/ 폴더
+- 매일 작성된 일지 파일
 
-#### 6.3.2. GitHub Repository 구조 예시
+#### 보안 체크리스트
 
-```
-project-root/
-├── README.md                 # 프로젝트 설명
-├── requirements.txt          # 패키지 목록
-├── .gitignore               # Git 제외 파일
-├── data/                    # 데이터 디렉토리 (원본 제외)
-│   └── processed/           # 전처리된 데이터
-├── src/                     # 소스 코드
-│   ├── preprocessing.py     # 전처리
-│   ├── embedding.py         # 임베딩
-│   ├── retrieval.py         # 검색
-│   ├── generation.py        # 생성
-│   └── evaluation.py        # 평가
-├── notebooks/               # Jupyter 노트북
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_baseline_rag.ipynb
-│   └── 03_evaluation.ipynb
-├── configs/                 # 설정 파일
-│   └── config.yaml
-├── tests/                   # 테스트 코드
-├── docs/                    # 문서
-│   └── report.pdf          # 최종 보고서
-└── logs/                   # 로그 파일
-```
-
-#### 6.3.3. README.md 작성 가이드
-
-```markdown
-# RFP 분석 RAG 시스템
-
-## 프로젝트 개요
-간단한 프로젝트 소개
-
-## 팀원
-- 팀원A (PM): 역할 설명
-- 팀원B: 역할 설명
-- 팀원C: 역할 설명
-- 팀원D: 역할 설명
-
-## 기술 스택
-- Python 3.10
-- LangChain
-- FAISS
-- OpenAI API
-- ...
-
-## 설치 방법
-```bash
-pip install -r requirements.txt
-```
-
-## 실행 방법
-```bash
-python src/main.py --config configs/config.yaml
-```
-
-## 프로젝트 구조
-...
-
-## 주요 결과
-- Precision@5: 0.85
-- 평균 응답 시간: 3.2초
-- ...
-
-## 협업 일지
-- [팀원A 협업 일지](링크)
-- [팀원B 협업 일지](링크)
-- ...
-
-## 참고 자료
-...
-```
-
-#### 6.3.4. 보안 체크리스트
-
-**제출 전 필수 확인:**
-
-- [ ] API 키가 코드에 하드코딩되지 않았는지 확인
-- [ ] `.env` 파일이 `.gitignore`에 포함되었는지 확인
-- [ ] 원본 RFP 문서가 업로드되지 않았는지 확인 (NDA)
-- [ ] SSH 키가 포함되지 않았는지 확인
-- [ ] 민감한 메타데이터가 제거되었는지 확인
-
-**환경 변수 관리 예시:**
-
-```python
-# config.py
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
-```
-
-```bash
-# .env (절대 Git에 포함 금지)
-OPENAI_API_KEY=sk-xxxxxxxxxxxxx
-GCP_PROJECT_ID=your-project-id
-```
+- [ ] API 키가 코드에 하드코딩되지 않음
+- [ ] `.env` 파일이 `.gitignore`에 포함
+- [ ] 민감한 데이터가 제거됨
 
 ---
 
@@ -1633,34 +1686,35 @@ GCP_PROJECT_ID=your-project-id
 | 영문 용어 | 한글 설명 |
 |----------|---------|
 | RAG (Retrieval-Augmented Generation) | 검색 증강 생성. 외부 지식을 검색하여 언어 모델의 생성 품질을 향상시키는 기법 |
-| RFP (Request For Proposal) | 제안요청서. 정부나 기업이 사업 수행자를 선정하기 위해 발행하는 공식 문서 |
+| PEP (Python Enhancement Proposal) | Python 개선 제안서. Python 언어의 새로운 기능, 개선 사항을 제안하고 문서화하는 공식 문서 |
 | Embedding | 임베딩. 텍스트를 고차원 벡터로 변환하는 과정 또는 그 결과물 |
 | Vector Database | 벡터 데이터베이스. 벡터 형태의 데이터를 효율적으로 저장하고 검색하기 위한 데이터베이스 |
 | Chunking | 청킹. 긴 문서를 작은 단위로 분할하는 과정 |
 | Retrieval | 검색. 쿼리와 관련된 문서나 정보를 찾아오는 과정 |
 | Generation | 생성. 언어 모델을 사용하여 텍스트를 생성하는 과정 |
 | LLM (Large Language Model) | 대규모 언어 모델. GPT, Claude 등 대량의 텍스트 데이터로 학습된 언어 모델 |
-| Prompt Engineering | 프롬프트 엔지니어링. LLM으로부터 원하는 출력을 얻기 위해 입력을 설계하는 기법 |
+| File Hash | 파일 해시. 파일의 내용을 기반으로 계산된 고유 식별자 (SHA-256 등) |
+| Embedding Hash | 임베딩 해시. 임베딩 설정(chunk_size, overlap 등)을 기반으로 계산된 고유 식별자 |
+| SQLite | 경량 데이터베이스. 파일 기반 관계형 데이터베이스 |
+| FAISS (Facebook AI Similarity Search) | 페이스북에서 개발한 효율적인 유사도 검색 라이브러리 |
+| Token | 토큰. 텍스트를 모델이 처리할 수 있는 최소 단위로 분할한 것 |
+| tiktoken | OpenAI의 토큰화 라이브러리. GPT 모델의 토큰 수를 계산 |
+| Cosine Similarity | 코사인 유사도. 두 벡터 간 각도의 코사인 값으로 유사도를 측정하는 방법 |
 | Top-K | 상위 K개. 유사도가 높은 상위 K개의 결과를 선택하는 방식 |
 | Temperature | 온도. 텍스트 생성 시 랜덤성을 조절하는 파라미터 (낮을수록 일관적) |
-| Token | 토큰. 텍스트를 모델이 처리할 수 있는 최소 단위로 분할한 것 |
-| FAISS (Facebook AI Similarity Search) | 페이스북에서 개발한 효율적인 유사도 검색 라이브러리 |
-| ChromaDB | 임베딩 저장 및 검색에 특화된 오픈소스 벡터 데이터베이스 |
-| Metadata | 메타데이터. 데이터에 대한 부가 정보 (발주기관, 예산, 날짜 등) |
-| MMR (Maximum Marginal Relevance) | 최대 한계 관련성. 관련성과 다양성을 동시에 고려하는 검색 기법 |
-| Cosine Similarity | 코사인 유사도. 두 벡터 간 각도의 코사인 값으로 유사도를 측정하는 방법 |
-| Precision | 정밀도. 검색된 항목 중 관련 있는 항목의 비율 |
-| Recall | 재현율. 전체 관련 항목 중 검색된 항목의 비율 |
-| MRR (Mean Reciprocal Rank) | 평균 역순위. 첫 번째 관련 결과의 순위 역수의 평균 |
-| API (Application Programming Interface) | 애플리케이션 프로그래밍 인터페이스. 소프트웨어 간 상호작용을 위한 규약 |
-| GPU (Graphics Processing Unit) | 그래픽 처리 장치. 병렬 연산에 특화된 프로세서로 AI 모델 학습/추론에 사용 |
-| VM (Virtual Machine) | 가상 머신. 물리적 컴퓨터에서 독립적으로 실행되는 가상 컴퓨팅 환경 |
-| SSH (Secure Shell) | 보안 셸. 네트워크를 통해 안전하게 원격 시스템에 접속하는 프로토콜 |
-| HWP | 한글과컴퓨터의 워드프로세서 파일 형식 |
-| PDF (Portable Document Format) | 문서 교환을 위한 범용 파일 형식 |
+| Streamlit | Python 기반 웹 애플리케이션 프레임워크 |
+| LangChain | LLM 애플리케이션 개발을 위한 프레임워크 |
 
 ---
 
-**문서 버전**: 1.0  
-**최종 수정일**: 2025-01-09  
+## 참고 문서
+
+- [RAG 기반 PEP 문서 처리 시스템 설계서](./RAG_기반_PEP_문서_처리_시스템_설계서.md)
+- [프로젝트 체크리스트](./프로젝트_체크리스트.md)
+- [개발자별 체크리스트](./개발자별_체크리스트A.md)
+
+---
+
+**문서 버전**: 2.0  
+**최종 수정일**: 2025-11-08  
 **작성자**: 코드잇 AI 4기 김명환

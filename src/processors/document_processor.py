@@ -13,23 +13,23 @@ except ImportError:
 from src.db import DocumentsDB
 
 class DocumentProcessor:
-    \"\"\"문서 처리 클래스 - PDF를 Markdown으로 변환하고 DB에 저장\"\"\"
+    """문서 처리 클래스 - PDF를 Markdown으로 변환하고 DB에 저장"""
 
     def __init__(self, db_path: str = 'data/documents.db'):
         self.docs_db = DocumentsDB(db_path)
         self.tokenizer = tiktoken.encoding_for_model("gpt-4")
 
     def calculate_file_hash(self, file_path: Path) -> str:
-        \"\"\"파일 SHA-256 해시 계산\"\"\"
+        """파일 SHA-256 해시 계산"""
         with open(file_path, 'rb') as f:
             return hashlib.sha256(f.read()).hexdigest()
 
     def count_tokens(self, text: str) -> int:
-        \"\"\"텍스트 토큰 수 계산\"\"\"
+        """텍스트 토큰 수 계산"""
         return len(self.tokenizer.encode(text))
 
     def process_pdf(self, pdf_path: str) -> Optional[str]:
-        \"\"\"
+        """
         PDF 파일을 처리하여 Markdown으로 변환하고 DB에 저장
 
         Args:
@@ -37,7 +37,7 @@ class DocumentProcessor:
 
         Returns:
             파일 해시값 또는 None
-        \"\"\"
+        """
         if not PYMUPDF_AVAILABLE:
             print("PyMuPDF가 설치되지 않았습니다. pip install pymupdf")
             return None

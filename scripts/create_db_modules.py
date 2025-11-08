@@ -23,7 +23,7 @@ class DocumentsDB:
     def _create_tables(self):
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(\"\"\"
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS file_info (
                     file_hash TEXT PRIMARY KEY,
                     file_name TEXT NOT NULL,
@@ -34,8 +34,8 @@ class DocumentsDB:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            \"\"\")
-            cursor.execute(\"\"\"
+            """)
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS page_data (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     file_hash TEXT NOT NULL,
@@ -47,28 +47,28 @@ class DocumentsDB:
                     FOREIGN KEY (file_hash) REFERENCES file_info(file_hash) ON DELETE CASCADE,
                     UNIQUE(file_hash, page_number)
                 )
-            \"\"\")
+            """)
             conn.commit()
 
     def insert_file_info(self, file_hash, file_name, total_pages, file_size, total_chars, total_tokens):
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(\"\"\"
+            cursor.execute("""
                 INSERT OR REPLACE INTO file_info
                 (file_hash, file_name, total_pages, file_size, total_chars, total_tokens, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            \"\"\", (file_hash, file_name, total_pages, file_size, total_chars, total_tokens, datetime.now()))
+            """, (file_hash, file_name, total_pages, file_size, total_chars, total_tokens, datetime.now()))
             conn.commit()
             return True
 
     def insert_page_data(self, file_hash, page_number, markdown_content, token_count, is_empty=False):
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(\"\"\"
+            cursor.execute("""
                 INSERT OR REPLACE INTO page_data
                 (file_hash, page_number, markdown_content, token_count, is_empty)
                 VALUES (?, ?, ?, ?, ?)
-            \"\"\", (file_hash, page_number, markdown_content, token_count, is_empty))
+            """, (file_hash, page_number, markdown_content, token_count, is_empty))
             conn.commit()
             return True
 
@@ -114,7 +114,7 @@ class EmbeddingsDB:
     def _create_tables(self):
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(\"\"\"
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS embedding_meta (
                     embedding_hash TEXT PRIMARY KEY,
                     file_hash TEXT NOT NULL,
@@ -127,8 +127,8 @@ class EmbeddingsDB:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            \"\"\")
-            cursor.execute(\"\"\"
+            """)
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS chunk_mapping (
                     chunk_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     embedding_hash TEXT NOT NULL,
@@ -141,7 +141,7 @@ class EmbeddingsDB:
                     vector_index INTEGER NOT NULL,
                     FOREIGN KEY (embedding_hash) REFERENCES embedding_meta(embedding_hash) ON DELETE CASCADE
                 )
-            \"\"\")
+            """)
             conn.commit()
 """
 
@@ -168,7 +168,7 @@ class ChatHistoryDB:
     def _create_tables(self):
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(\"\"\"
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS chat_sessions (
                     session_id TEXT PRIMARY KEY,
                     session_name TEXT NOT NULL,
@@ -176,8 +176,8 @@ class ChatHistoryDB:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT 1
                 )
-            \"\"\")
-            cursor.execute(\"\"\"
+            """)
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS chat_messages (
                     message_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     session_id TEXT NOT NULL,
@@ -187,7 +187,7 @@ class ChatHistoryDB:
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (session_id) REFERENCES chat_sessions(session_id) ON DELETE CASCADE
                 )
-            \"\"\")
+            """)
             conn.commit()
 
     def create_session(self, session_name=None):
@@ -196,10 +196,10 @@ class ChatHistoryDB:
             session_name = f"채팅 세션 {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(\"\"\"
+            cursor.execute("""
                 INSERT INTO chat_sessions (session_id, session_name)
                 VALUES (?, ?)
-            \"\"\", (session_id, session_name))
+            """, (session_id, session_name))
             conn.commit()
             return session_id
 
@@ -209,16 +209,16 @@ class ChatHistoryDB:
             chunks_json = None
             if retrieved_chunks:
                 chunks_json = json.dumps(retrieved_chunks, ensure_ascii=False)
-            cursor.execute(\"\"\"
+            cursor.execute("""
                 INSERT INTO chat_messages
                 (session_id, role, content, retrieved_chunks)
                 VALUES (?, ?, ?, ?)
-            \"\"\", (session_id, role, content, chunks_json))
-            cursor.execute(\"\"\"
+            """, (session_id, role, content, chunks_json))
+            cursor.execute("""
                 UPDATE chat_sessions
                 SET updated_at = ?
                 WHERE session_id = ?
-            \"\"\", (datetime.now(), session_id))
+            """, (datetime.now(), session_id))
             conn.commit()
             return cursor.lastrowid
 

@@ -17,7 +17,7 @@ except ImportError:
 from src.db import EmbeddingsDB
 
 class Retrieval:
-    \"\"\"검색 클래스 - 쿼리에 대한 유사 청크 검색\"\"\"
+    """검색 클래스 - 쿼리에 대한 유사 청크 검색"""
 
     def __init__(self, embedding_model: str = "text-embedding-3-small"):
         self.embeddings_db = EmbeddingsDB()
@@ -35,7 +35,7 @@ class Retrieval:
         top_k: int = 5,
         api_key: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        \"\"\"
+        """
         쿼리에 대한 유사 청크 검색
 
         Args:
@@ -46,7 +46,7 @@ class Retrieval:
 
         Returns:
             검색 결과 리스트
-        \"\"\"
+        """
         if not LANGCHAIN_AVAILABLE or not FAISS_AVAILABLE:
             print("필수 패키지가 설치되지 않았습니다.")
             return []

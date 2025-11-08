@@ -21,7 +21,7 @@ except ImportError:
 from src.db import DocumentsDB, EmbeddingsDB
 
 class EmbeddingProcessor:
-    \"\"\"임베딩 처리 클래스 - 문서를 청킹하고 벡터 임베딩 생성\"\"\"
+    """임베딩 처리 클래스 - 문서를 청킹하고 벡터 임베딩 생성"""
 
     def __init__(
         self,
@@ -46,12 +46,12 @@ class EmbeddingProcessor:
             print("LangChain이 설치되지 않았습니다.")
 
     def calculate_embedding_hash(self, file_hash: str, config: Dict) -> str:
-        \"\"\"임베딩 설정 해시 계산\"\"\"
+        """임베딩 설정 해시 계산"""
         data = f"{file_hash}_{json.dumps(config, sort_keys=True)}"
         return hashlib.sha256(data.encode()).hexdigest()
 
     def process_document(self, file_hash: str, api_key: Optional[str] = None) -> Optional[str]:
-        \"\"\"
+        """
         문서를 청킹하고 임베딩 생성
 
         Args:
@@ -60,7 +60,7 @@ class EmbeddingProcessor:
 
         Returns:
             임베딩 해시값 또는 None
-        \"\"\"
+        """
         if not LANGCHAIN_AVAILABLE or not FAISS_AVAILABLE:
             print("필수 패키지가 설치되지 않았습니다.")
             return None

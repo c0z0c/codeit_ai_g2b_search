@@ -9,7 +9,7 @@ except ImportError:
     LANGCHAIN_AVAILABLE = False
 
 class LLMProcessor:
-    \"\"\"LLM 응답 생성 클래스\"\"\"
+    """LLM 응답 생성 클래스"""
 
     def __init__(self, model: str = "gpt-4o-mini", temperature: float = 0.7):
         self.model_name = model
@@ -26,7 +26,7 @@ class LLMProcessor:
         retrieved_chunks: List[Dict[str, Any]],
         api_key: Optional[str] = None
     ) -> str:
-        \"\"\"
+        """
         검색된 청크를 바탕으로 LLM 응답 생성
 
         Args:
@@ -36,7 +36,7 @@ class LLMProcessor:
 
         Returns:
             LLM 응답
-        \"\"\"
+        """
         if not LANGCHAIN_AVAILABLE:
             return "LangChain이 설치되지 않았습니다."
 
@@ -57,14 +57,14 @@ class LLMProcessor:
             context = "\n\n".join(context_parts)
 
         # 프롬프트 템플릿
-        template = \"\"\"다음 문서를 참고하여 질문에 답변해주세요.
+        template = """다음 문서를 참고하여 질문에 답변해주세요.
 
 참고 문서:
 {context}
 
 질문: {query}
 
-답변:\"\"\"
+답변:"""
 
         prompt = ChatPromptTemplate.from_template(template)
         chain = prompt | self.llm
