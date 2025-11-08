@@ -31,7 +31,7 @@ function getFolderInfo(folderName) {
         '실습': { icon: '', desc: '실습 자료' },
         '위클리페이퍼': { icon: '', desc: '주간 학습 리포트' },
         '테스트': { icon: '', desc: '테스트 파일들' },
-        '회의록': { icon: '', desc: '협업 일지' },
+        '회의록': { icon: '', desc: '협업일지' },
         '회의록': { icon: '', desc: '팀 회의록' },
         'AI 모델 환경 설치가이드': { icon: '', desc: '설치 가이드' },
         'assets': { icon: '', desc: '정적 자원' },

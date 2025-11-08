@@ -26,9 +26,9 @@ author: "김명환"
 ### 📅 프로젝트 기간
 **2025년 11월 10일 ~ 2025년 11월 28일**
 
-## 📝 협업 일지
+## 📝 협업일지
 
-팀원별 개발 과정 및 학습 내용을 기록한 협업 일지입니다.
+팀원별 개발 과정 및 학습 내용을 기록한 협업일지입니다.
 
 - [김명환 협업일지 (Project Manager)](https://c0z0c.github.io/codeit_ai_g2b_search/협업일지/김명환/)
 - [신승목 협업일지 (Data Engineer)](https://c0z0c.github.io/codeit_ai_g2b_search/협업일지/신승일/)
@@ -57,7 +57,7 @@ function getFolderInfo(folderName) {
         '실습': { icon: '🔬', desc: '실습 자료' },
         '위클리페이퍼': { icon: '📰', desc: '주간 학습 리포트' },
         '테스트': { icon: '🧪', desc: '테스트 파일들' },
-        '협업일지': { icon: '📓', desc: '협업 일지' },
+        '협업일지': { icon: '📓', desc: '협업일지' },
         'doc': { icon: '📋', desc: '팀 doc' },
         'AI 모델 환경 설치가이드': { icon: '⚙️', desc: '설치 가이드' },
         'assets': { icon: '🎨', desc: '정적 자원' },
