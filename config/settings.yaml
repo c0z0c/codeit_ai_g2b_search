@@ -1,0 +1,74 @@
+# RAG 기반 PEP 문서 처리 시스템 설정
+
+# 데이터베이스 경로
+database:
+  documents: "data/documents.db"
+  embeddings: "data/embeddings.db"
+  chat_history: "data/chat_history.db"
+
+# 데이터 디렉토리
+paths:
+  raw_data: "data/raw"
+  processed_data: "data/processed"
+  vectorstore: "data/vectorstore"
+  logs: "logs"
+
+# 문서 처리 설정
+document_processing:
+  supported_formats:
+    - ".pdf"
+    - ".hwp"
+  page_separator: "\n\n--- 페이지 {page_num} ---\n\n"
+  empty_page_marker: "\n--- [빈페이지] ---\n"
+  max_consecutive_newlines: 2  # 연속된 개행 제한
+
+# 청킹 설정
+chunking:
+  chunk_size: 1000  # 기본 청크 크기 (문자 수)
+  chunk_overlap: 200  # 청크 간 오버랩
+  separator: "\n\n"  # 청크 구분자
+
+# 임베딩 설정
+embedding:
+  model: "text-embedding-3-small"  # OpenAI 임베딩 모델
+  dimension: 1536  # 임베딩 차원
+  batch_size: 100  # 배치 처리 크기
+
+  # 전처리 옵션
+  preprocessing:
+    remove_markdown: false  # 마크다운 태그 제거 여부
+    remove_html: true  # HTML 태그 제거 여부
+    preserve_tables: true  # 표 구조 유지 여부
+
+# LLM 설정
+llm:
+  model: "gpt-4o-mini"  # OpenAI LLM 모델
+  temperature: 0.7  # 생성 온도
+  max_tokens: 1500  # 최대 토큰 수
+  top_p: 0.9
+
+# 검색 설정
+retrieval:
+  top_k: 5  # 검색할 상위 청크 수
+  similarity_threshold: 0.7  # 유사도 임계값
+
+# 로깅 설정
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s [%(levelname)s] %(name)s - %(message)s"
+  file_max_bytes: 10485760  # 10MB
+  file_backup_count: 5
+  console_output: true
+  file_output: true
+
+# Streamlit UI 설정
+ui:
+  page_title: "RAG 기반 PEP 문서 검색 시스템"
+  page_icon: "📚"
+  layout: "wide"
+  initial_sidebar_state: "expanded"
+
+  # 세션 설정
+  session:
+    max_history: 50  # 최대 대화 히스토리 수
+    auto_save: true  # 자동 저장 여부

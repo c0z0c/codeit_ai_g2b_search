@@ -1,0 +1,111 @@
+# Python
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 가상환경
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 로그
+logs/
+*.log
+
+# 환경 변수
+.env
+.env.local
+
+# 임베딩 저장소
+embeddings/*.faiss
+embeddings/*.pkl
+
+# 데이터 (더미 제외)
+data/*.pdf
+data/*.hwp
+!data/dummy_rfp.md
+
+# OS
+.DS_Store
+Thumbs.db/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Streamlit Secrets
+.streamlit/secrets.toml
+
+# Helper Files (downloaded) - 루트 디렉토리만 제외, src/ 내부는 포함
+/helper_utils.py
+/helper_c0z0c_dev.py
+
+# Data
+data/vectorstore/
+data/*.pdf
+data/*.md
+*.faiss
+*.pkl
+
+# 샘플 벡터스토어는 GitHub에 포함 (Streamlit Cloud 테스트용)
+!data/vectorstore_db/
+
+# Logs
+*.log
+logs/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+Thumbs.db
+
+# Temporary
+*.tmp
+*.temp
+tmp/
+temp/
