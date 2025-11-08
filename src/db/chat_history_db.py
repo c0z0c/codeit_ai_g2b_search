@@ -7,17 +7,36 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 class ChatHistoryDB:
+    """
+    ChatHistoryDB는 SQLite를 사용하여 채팅 세션 및 메시지를 관리하는 데이터베이스를 제공합니다.
+    주요 기능:
+    - 채팅 세션 생성 및 관리
+    - 채팅 메시지 추가 및 조회
+    - 채팅 통계 정보 제공
+    """
+
     def __init__(self, db_path: str = 'data/chat_history.db'):
+        """
+        데이터베이스 초기화 및 테이블 생성.
+        :param db_path: 데이터베이스 파일 경로 (기본값: 'data/chat_history.db')
+        """
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._create_tables()
 
     def _get_connection(self):
+        """
+        SQLite 데이터베이스 연결 객체를 생성.
+        :return: SQLite 연결 객체
+        """
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
 
     def _create_tables(self):
+        """
+        필요한 데이터베이스 테이블(chat_sessions, chat_messages)을 생성.
+        """
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -42,7 +61,12 @@ class ChatHistoryDB:
             """)
             conn.commit()
 
-    def create_session(self, session_name=None):
+    def create_session(self, session_name=None) -> str:
+        """
+        새로운 채팅 세션을 생성.
+        :param session_name: 세션 이름 (기본값: 현재 시간 기반 자동 생성)
+        :return: 생성된 세션 ID
+        """
         session_id = str(uuid.uuid4())
         if session_name is None:
             session_name = f"채팅 세션 {datetime.now().strftime('%Y-%m-%d %H:%M')}"
@@ -55,7 +79,15 @@ class ChatHistoryDB:
             conn.commit()
             return session_id
 
-    def add_message(self, session_id, role, content, retrieved_chunks=None):
+    def add_message(self, session_id: str, role: str, content: str, retrieved_chunks: Optional[List[Dict[str, Any]]] = None) -> int:
+        """
+        특정 세션에 메시지를 추가.
+        :param session_id: 메시지를 추가할 세션 ID
+        :param role: 메시지의 역할 ('user' 또는 'assistant')
+        :param content: 메시지 내용
+        :param retrieved_chunks: 검색된 청크 데이터 (JSON 형식)
+        :return: 추가된 메시지의 ID
+        """
         with self._get_connection() as conn:
             cursor = conn.cursor()
             chunks_json = None
@@ -74,7 +106,11 @@ class ChatHistoryDB:
             conn.commit()
             return cursor.lastrowid
 
-    def get_chat_stats(self):
+    def get_chat_stats(self) -> Dict[str, int]:
+        """
+        채팅 데이터베이스의 통계 정보를 반환.
+        :return: 총 세션 수, 활성 세션 수, 총 메시지 수, 사용자 메시지 수, 어시스턴트 메시지 수
+        """
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT COUNT(*) FROM chat_sessions')

@@ -68,34 +68,36 @@ class ShortLevelFormatter(logging.Formatter):
 
 def load_settings() -> Dict:
     """
-    settings.yaml 파일 로드
-    
+    Config에서 로깅 설정 로드
+
     Returns:
         Dict: 설정 딕셔너리
     """
-    config_path = Path(__file__).parent.parent.parent / 'config' / 'settings.yaml'
-    
-    if not config_path.exists():
+    try:
+        # Config 임포트 (순환 참조 방지를 위해 함수 내부에서 임포트)
+        from src.config import get_config
+
+        config = get_config()
         return {
             'logging': {
-                'level': 'INFO',
-                'log_dir': './logs',
-                'console': True,
-                'file': True
+                'level': config.LOG_LEVEL,
+                'log_dir': config.LOG_DIR,
+                'console': True,  # 콘솔 출력 기본 활성화
+                'file': True,     # 파일 출력 기본 활성화
+                'max_bytes': config.LOG_FILE_MAX_BYTES,
+                'backup_count': config.LOG_FILE_BACKUP_COUNT
             }
         }
-    
-    try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f) or {}
     except Exception as e:
-        print(f"설정 파일 로드 실패: {e}")
+        print(f"Config 로드 실패, 기본 설정 사용: {e}")
         return {
             'logging': {
                 'level': 'INFO',
                 'log_dir': './logs',
                 'console': True,
-                'file': True
+                'file': True,
+                'max_bytes': 10 * 1024 * 1024,
+                'backup_count': 5
             }
         }
 
@@ -185,15 +187,19 @@ def setup_logger(
             # 로그 디렉토리 생성
             log_path = Path(log_dir)
             log_path.mkdir(parents=True, exist_ok=True)
-            
+
             # 로그 파일 경로
             log_file = log_path / f"{name.replace('.', '_')}.log"
-            
-            # RotatingFileHandler 사용 (10MB, 백업 5개)
+
+            # Config에서 로테이션 설정 가져오기
+            max_bytes = log_config.get('max_bytes', 10 * 1024 * 1024)
+            backup_count = log_config.get('backup_count', 5)
+
+            # RotatingFileHandler 사용
             file_handler = logging.handlers.RotatingFileHandler(
                 log_file,
-                maxBytes=10 * 1024 * 1024,  # 10MB
-                backupCount=5,
+                maxBytes=max_bytes,
+                backupCount=backup_count,
                 encoding='utf-8'
             )
             file_handler.setLevel(level)
