@@ -9,7 +9,7 @@ pragma: no-cache
 author: "김명환"
 ---
 
-# 메인 문서
+# 협업 일지 김명환
 
 <script>
 
