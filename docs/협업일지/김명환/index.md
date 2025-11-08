@@ -80,7 +80,7 @@ function getFileInfo(extname) {
   }
 }
 
-{% assign cur_dir = "/협업일지/김명환" %}
+{% assign cur_dir = "/협업일지/김명환/" %}
 {% include cur_files.liquid %}
 {% include page_values.html %}
 {% include page_files_table.html %}
