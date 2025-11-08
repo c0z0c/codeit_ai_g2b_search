@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       // Git 직접 링크
-      const gitLink = `<a href="${git_url}docs/${fileName}" title="GitHub에서 원본 보기" target="_blank">📖</a>`;
+      const gitLink = `<a href="${git_url}${fileName}" title="GitHub에서 원본 보기" target="_blank">📖</a>`;
 
       // 제목 클릭 시 렌더링 페이지 링크 생성
       let titleClickable = `<span class="file-icon">${fileInfo.icon}</span> ${file.title || file.name}`;
@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       // 파일명 클릭 시 Git 직접 연결
-      const fileNameClickable = `<a href="${git_url}docs/${fileName}" title="GitHub에서 원본 보기" target="_blank"
+      const fileNameClickable = `<a href="${git_url}${fileName}" title="GitHub에서 원본 보기" target="_blank"
       style="text-decoration: none; color: inherit;">${fileName}</a>`;
 
       html += `
