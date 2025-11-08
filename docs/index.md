@@ -34,7 +34,7 @@ author: "김명환"
 - [신승목 협업일지 (Data Engineer)](https://c0z0c.github.io/codeit_ai_g2b_search/협업일지/신승일/)
 - [오형주 협업일지 (Model Architect)](https://c0z0c.github.io/codeit_ai_g2b_search/협업일지/오형주/)
 - [이민규 협업일지 (Experimentation Lead)](https://c0z0c.github.io/codeit_ai_g2b_search/협업일지/이민규/)
-- 이현재 협업일지
+
 - [팀 회의록](https://c0z0c.github.io/codeit_ai_g2b_search/회의록/)
 
 <script>

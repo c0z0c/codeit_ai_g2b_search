@@ -13,6 +13,21 @@
 
 PDF/HWP 형태의 PEP(공공데이터) 문서를 자동으로 처리하여 벡터 임베딩을 생성하고, 사용자 질의에 대해 관련 문서를 검색하여 LLM 기반 답변을 제공하는 **RAG(Retrieval-Augmented Generation)** 시스템입니다.
 
+### 📅 프로젝트 기간
+**2025년 11월 10일 ~ 2025년 11월 28일**
+
+## 📝 협업일지
+
+팀원별 개발 과정 및 학습 내용을 기록한 협업일지입니다.
+
+- [김명환 협업일지 (Project Manager)](https://c0z0c.github.io/codeit_ai_g2b_search/협업일지/김명환/)
+- [신승목 협업일지 (Data Engineer)](https://c0z0c.github.io/codeit_ai_g2b_search/협업일지/신승일/)
+- [오형주 협업일지 (Model Architect)](https://c0z0c.github.io/codeit_ai_g2b_search/협업일지/오형주/)
+- [이민규 협업일지 (Experimentation Lead)](https://c0z0c.github.io/codeit_ai_g2b_search/협업일지/이민규/)
+
+- [팀 회의록](https://c0z0c.github.io/codeit_ai_g2b_search/회의록/)
+
+
 ### 핵심 기능
 
 - ✅ **문서 처리**: PDF → Markdown 자동 변환 (페이지 단위)

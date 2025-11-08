@@ -84,22 +84,12 @@ function getFileInfo(extname) {
 {% include cur_files.liquid %}
 {% include page_values.html %}
 {% include page_files_table.html %}
-{% include page_folders_tree.html %}
 
 </script>
 
 <div class="file-grid">
   <!-- 파일 목록이 JavaScript로 동적 생성됩니다 -->
 </div>
-
----
-
-## 폴더목록
-
-<div class="folder-grid">
-  <!-- 폴더 목록이 JavaScript로 동적 생성됩니다 -->
-</div>
-
 
 ---
 
