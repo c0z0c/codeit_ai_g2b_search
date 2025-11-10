@@ -11,10 +11,10 @@ author: "김명환"
 
 # 🏥 코드잇 AI 4기 3팀 중급 프로젝트
 
-### 📱 프로젝트 개요
+## 📱 프로젝트 개요
 **목표**: RAG(Retrieval-Augmented Generation) 시스템을 구축하여 복잡한 형태의 기업 및 정부 제안요청서(Request For Proposal, RFP) 내용을 효과적으로 추출하고 요약하여 필요한 정보를 제공하는 서비스를 개발하는 것을 목표로 합니다.
 
-### 👥 팀원
+## 👥 팀원
 
 | 역할          | 담당자       | 핵심 업무                                      |
 |---------------|--------------|-----------------------------------------------|
@@ -22,9 +22,6 @@ author: "김명환"
 | 머신러닝 엔지니어 |        | 임베딩 처리 (Markdown → 벡터 임베딩 및 FAISS 저장)         |
 | AI 리서처      |        | LLM 기반 정보 추출 및 요약 시스템                      |
 | 프론트엔드 엔지니어 |        | Streamlit UI 개발 및 통합                           |
-
-### 📅 프로젝트 기간
-**2025년 11월 10일 ~ 2025년 11월 28일**
 
 ## 📝 협업일지
 
@@ -36,6 +33,40 @@ author: "김명환"
 - [이민규 협업일지 (Experimentation Lead)](https://c0z0c.github.io/codeit_ai_g2b_search/협업일지/이민규/)
 
 - [팀 회의록](https://c0z0c.github.io/codeit_ai_g2b_search/회의록/)
+
+## 📅 프로젝트 기간
+**2025년 11월 10일 ~ 2025년 11월 28일**
+
+**프로젝트 일정 (3주, 2025-11-08 ~ 2025-11-28):**
+
+```mermaid
+gantt
+    title RAG PEP 프로젝트 타임라인 (3주)
+    dateFormat  YYYY-MM-DD
+    
+    section Week 1: 기반 구축
+    환경 설정 및 초기화        :w1d1, 2025-11-08, 1d
+    더미 데이터 생성           :w1d2, after w1d1, 1d
+    DB 스키마 구축             :w1d3, after w1d2, 2d
+    UI 프로토타입 개발         :w1d4, after w1d3, 2d
+    Week 1 통합 테스트         :milestone, m1, after w1d4, 0d
+    
+    section Week 2: 핵심 기능 개발
+    문서 수집 및 변환 (개발자1) :w2d1, 2025-11-15, 3d
+    임베딩 처리 (개발자2)       :w2d2, 2025-11-15, 3d
+    LLM 챗봇 개발 (개발자3)     :w2d3, 2025-11-15, 3d
+    UI 통합 개발 (개발자4)      :w2d4, 2025-11-15, 3d
+    모듈 통합 작업              :w2d5, after w2d1, 3d
+    Week 2 통합 완료            :milestone, m2, after w2d5, 0d
+    
+    section Week 3: 최적화 및 마무리
+    전체 통합 테스트           :w3d1, 2025-11-22, 2d
+    성능 평가 및 최적화        :w3d2, after w3d1, 2d
+    문서화 및 README           :w3d3, after w3d2, 1d
+    발표 자료 준비             :w3d4, after w3d3, 1d
+    최종 발표                  :milestone, m3, 2025-11-28, 0d
+```
+
 
 <script>
 
