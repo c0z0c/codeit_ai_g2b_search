@@ -187,7 +187,7 @@ graph LR
 **embedding_hash 계산**:
 
 $$
-\text{embedding\_hash} = \text{SHA256}(\text{file\_hash} + \text{JSON}(\text{config}))
+\text{embedding\_{hash}} = \text{SHA256}(\text{file\_{hash}} + \text{JSON}(\text{config}))
 $$
 
 여기서 `config = {chunk_size, chunk_overlap, model}`
