@@ -23,29 +23,29 @@ PDF/HWP 형태의 PEP(공공데이터) 문서를 자동으로 처리하여 벡�
 
 ```mermaid
 gantt
-    title RAG PEP 프로젝트 타임라인 (3주)
+    title RAG PEP 프로젝트 타임라인 (11월 10일~28일)
     dateFormat  YYYY-MM-DD
-    
-    section Week 1: 기반 구축
-    환경 설정 및 초기화        :w1d1, 2025-11-08, 1d
-    더미 데이터 생성           :w1d2, after w1d1, 1d
-    DB 스키마 구축             :w1d3, after w1d2, 2d
-    UI 프로토타입 개발         :w1d4, after w1d3, 2d
-    Week 1 통합 테스트         :milestone, m1, after w1d4, 0d
-    
-    section Week 2: 핵심 기능 개발
-    문서 수집 및 변환 (신승목) :w2d1, 2025-11-15, 3d
-    임베딩 처리 (김명환)       :w2d2, 2025-11-15, 3d
-    LLM 챗봇 개발 (이민규)     :w2d3, 2025-11-15, 3d
-    UI 통합 개발 (오형주)      :w2d4, 2025-11-15, 3d
-    모듈 통합 작업              :w2d5, after w2d1, 3d
-    Week 2 통합 완료            :milestone, m2, after w2d5, 0d
-    
-    section Week 3: 최적화 및 마무리
-    전체 통합 테스트           :w3d1, 2025-11-22, 2d
-    성능 평가 및 최적화        :w3d2, after w3d1, 2d
-    문서화 및 README           :w3d3, after w3d2, 1d
-    발표 자료 준비             :w3d4, after w3d3, 1d
+
+    section Week 1: 기반 구축 (11/10~14)
+    환경 설정 및 초기화        :w1d1, 2025-11-10, 1d
+    더미 데이터 생성           :w1d2, 2025-11-11, 1d
+    DB 스키마 구축             :w1d3, 2025-11-12, 2d
+    UI 프로토타입 개발         :w1d4, 2025-11-12, 2d
+    Week 1 통합 테스트         :milestone, m1, 2025-11-14, 0d
+
+    section Week 2: 핵심 기능 개발 (11/17~21)
+    문서 수집 및 변환 (신승목) :w2d1, 2025-11-17, 3d
+    임베딩 처리 (김명환)       :w2d2, 2025-11-17, 3d
+    LLM 챗봇 개발 (이민규)     :w2d3, 2025-11-17, 3d
+    UI 통합 개발 (오형주)      :w2d4, 2025-11-17, 3d
+    모듈 통합 작업              :w2d5, 2025-11-19, 3d
+    Week 2 통합 완료            :milestone, m2, 2025-11-21, 0d
+
+    section Week 3: 최적화 및 마무리 (11/24~28)
+    전체 통합 테스트           :w3d1, 2025-11-24, 2d
+    성능 평가 및 최적화        :w3d2, 2025-11-25, 2d
+    문서화 및 README           :w3d3, 2025-11-26, 1d
+    발표 자료 준비             :w3d4, 2025-11-27, 2d
     최종 발표                  :milestone, m3, 2025-11-28, 0d
 ```
 
