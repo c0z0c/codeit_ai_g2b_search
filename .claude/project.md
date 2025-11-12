@@ -49,7 +49,7 @@
 - preprocessing_option (TEXT): 전처리 옵션 (JSON)
 - embedding_model (TEXT): 임베딩 모델명
 - total_chunks (INTEGER): 총 청크 수
-- faiss_index_path (TEXT): FAISS 인덱스 파일 경로
+- vector_path (TEXT): FAISS 인덱스 파일 경로
 - created_at (TIMESTAMP)
 - updated_at (TIMESTAMP)
 ```

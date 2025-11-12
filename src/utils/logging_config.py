@@ -21,6 +21,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict
+from src.config import get_config, Config
 
 import pytz
 import yaml
@@ -66,7 +67,7 @@ class ShortLevelFormatter(logging.Formatter):
         return ct.strftime('%Y-%m-%d %H:%M:%S')
 
 
-def load_settings() -> Dict:
+def load_settings(config : Optional[Config] = None) -> Dict:
     """
     Config에서 로깅 설정 로드
 
@@ -75,9 +76,9 @@ def load_settings() -> Dict:
     """
     try:
         # Config 임포트 (순환 참조 방지를 위해 함수 내부에서 임포트)
-        from src.config import get_config
+        if config is None:
+            config = get_config()
 
-        config = get_config()
         return {
             'logging': {
                 'level': config.LOG_LEVEL,
@@ -103,14 +104,14 @@ def load_settings() -> Dict:
             }
         }
 
-
 def setup_logger(
     name: str = __name__,
     level: Optional[int] = None,
     format_string: Optional[str] = None,
     enable_file: Optional[bool] = None,
     enable_console: Optional[bool] = None,
-    log_dir: Optional[str] = None
+    log_dir: Optional[str] = None,
+    config: Optional[Config] = None
 ) -> logging.Logger:
     """
     로거 설정 및 반환
@@ -134,7 +135,7 @@ def setup_logger(
         return _loggers[name]
     
     # 설정 파일 로드
-    settings = load_settings()
+    settings = load_settings(config=config)
     log_config = settings.get('logging', {})
     
     # 로깅 레벨 결정
@@ -215,7 +216,6 @@ def setup_logger(
     _loggers[name] = logger
     
     return logger
-
 
 def get_logger(name: str = __name__) -> logging.Logger:
     """

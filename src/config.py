@@ -30,7 +30,6 @@ class Config:
 
     Attributes:
         version (str): 설정 파일 버전
-        DEBUG_ON (bool): 디버그 모드 플래그
         OPENAI_API_KEY (Optional[str]): OpenAI API 키 (환경 변수 우선)
         OPENAI_MODEL (str): 사용할 LLM 모델명
         OPENAI_TEMPERATURE (float): 생성 온도 (0.0~2.0, 낮을수록 결정적)
@@ -54,9 +53,9 @@ class Config:
         EMBEDDING_DIMENSION (int): 임베딩 벡터 차원 (text-embedding-3-small: 1536)
         
         DATA_PATH (str): 데이터 디렉토리 경로
-        DOCUMENTS_DB (str): 문서 메타데이터 DB 경로
-        EMBEDDINGS_DB (str): 임베딩 메타데이터 DB 경로
-        CHAT_HISTORY_DB (str): 채팅 이력 DB 경로
+        DOCUMENTS_DB_PATH (str): 문서 메타데이터 DB 경로
+        EMBEDDINGS_DB_PATH (str): 임베딩 메타데이터 DB 경로
+        CHAT_HISTORY_DB_PATH (str): 채팅 이력 DB 경로
         VECTORSTORE_PATH (str): FAISS 벡터 스토어 디렉토리
         CONFIG_PATH (str): 설정 파일 경로
         
@@ -79,7 +78,6 @@ class Config:
 
     # ==================== 버전 정보 ====================
     version: str = "1.0.0"  # 설정 스키마 버전
-    DEBUG_ON: bool = False  # 디버그 모드 플래그
 
     # ==================== OpenAI API 설정 ====================
     OPENAI_API_KEY: Optional[str] = None  # API 키 (환경 변수에서 자동 로드)
@@ -89,6 +87,7 @@ class Config:
     OPENAI_TOKENIZER_MODEL: str = "gpt-4"  # 토큰 카운팅용 모델명
 
     # ==================== 청킹(Chunking) 설정 ====================
+    CHUNKING_MODE: str = "token"  # 청킹 모드 ('token' 또는 'character')
     CHUNK_SIZE: int = 600  # 청크 크기 (토큰 단위, 권장: 500-1000)
     CHUNK_OVERLAP: int = 100  # 청크 중첩 크기 (문맥 유지용)
     CHUNK_SEPARATORS: List[str] = field(default_factory=lambda: [
@@ -112,9 +111,9 @@ class Config:
 
     # ==================== 경로 설정 ====================
     DATA_PATH: str = "data"  # 데이터 루트 디렉토리
-    DOCUMENTS_DB: str = "data/documents.db"  # 문서 메타데이터 SQLite DB
-    EMBEDDINGS_DB: str = "data/embeddings.db"  # 임베딩 메타데이터 SQLite DB
-    CHAT_HISTORY_DB: str = "data/chat_history.db"  # 채팅 이력 SQLite DB
+    DOCUMENTS_DB_PATH: str = "data/documents.db"  # 문서 메타데이터 SQLite DB
+    EMBEDDINGS_DB_PATH: str = "data/embeddings.db"  # 임베딩 메타데이터 SQLite DB
+    CHAT_HISTORY_DB_PATH: str = "data/chat_history.db"  # 채팅 이력 SQLite DB
     VECTORSTORE_PATH: str = "data/vectorstore"  # FAISS 인덱스 저장 디렉토리
     CONFIG_PATH: str = "config/config.json"  # 설정 파일 경로
 
@@ -128,7 +127,7 @@ class Config:
     HASH_ALGORITHM: str = "sha256"  # 문서/임베딩 해시 알고리즘
 
     # ==================== 로깅 설정 ====================
-    LOG_LEVEL: str = "INFO"  # 로깅 레벨 (DEBUG < INFO < WARNING < ERROR < CRITICAL)
+    LOG_LEVEL: str = "DEBUG"  # 로깅 레벨 (DEBUG < INFO < WARNING < ERROR < CRITICAL)
     LOG_DIR: str = "logs"  # 로그 파일 저장 디렉토리
     LOG_FILE_NAME: str = "rag_system.log"  # 통합 로그 파일명
     LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024  # 로그 파일 최대 크기 (10MB)
@@ -186,16 +185,9 @@ class Config:
 
         # JSON 파일이 존재하면 로드
         if config_file.exists():
-            try:
-                with open(config_file, 'r', encoding='utf-8') as f:
-                    config_data = json.load(f)
-                print(f"✓ 설정 파일 로드 완료: {config_path}")
-            except Exception as e:
-                print(f"⚠ 설정 파일 로드 실패: {e}")
-                print("기본 설정을 사용합니다.")
-        else:
-            print(f"⚠ 설정 파일을 찾을 수 없습니다: {config_path}")
-            print("기본 설정을 사용합니다.")
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+            print(f"✓ 설정 파일 로드 완료: {config_path}")
 
         # 환경 변수에서 API 키 로드 (최우선)
         api_key = os.getenv('OPENAI_API_KEY')
@@ -341,11 +333,11 @@ class Config:
             DB 파일 경로
         """
         db_paths = {
-            'documents': self.DOCUMENTS_DB,
-            'embeddings': self.EMBEDDINGS_DB,
-            'chat_history': self.CHAT_HISTORY_DB
+            'documents': self.DOCUMENTS_DB_PATH,
+            'embeddings': self.EMBEDDINGS_DB_PATH,
+            'chat_history': self.CHAT_HISTORY_DB_PATH
         }
-        return db_paths.get(db_type, self.DOCUMENTS_DB)
+        return db_paths.get(db_type, self.DOCUMENTS_DB_PATH)
 
     def get_vectorstore_path(self, embedding_hash: str) -> str:
         """
@@ -358,6 +350,12 @@ class Config:
             FAISS 인덱스 파일 경로
         """
         return f"{self.VECTORSTORE_PATH}/{embedding_hash}.faiss"
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """설정을 딕셔너리로 변환"""
+        config_dict = asdict(self)
+        config_dict.pop('_instance', None)
+        return config_dict
 
     def __repr__(self) -> str:
         """문자열 표현"""
@@ -376,3 +374,4 @@ def get_config(config_path: Optional[str] = None) -> Config:
         Config 싱글톤 인스턴스
     """
     return Config.get_instance(config_path)
+
