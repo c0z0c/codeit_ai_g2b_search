@@ -72,9 +72,16 @@ with st.sidebar:
     st.divider()
 
     # 데이터 통계
+    # !!!DocumentsDB 클래스가 없기 때문에 ImportError 또는 AttributeError 가 납니다. (11/11 추가) ***까지!!!
     st.subheader("📊 데이터 통계")
-    doc_stats = dbs['docs'].get_document_stats()
-    embedding_stats = dbs['embeddings'].get_embedding_stats()
+    #doc_stats = dbs['docs'].get_document_stats()
+    #embedding_stats = dbs['embeddings'].get_embedding_stats()
+
+    #해결 방법 (UI만 테스트하고 싶을 때) 만약 UI만 보고 싶다면, dbs['docs'] 관련 부분을 더미로 바꾸면 됩니다.
+    # 더미 데이터로 교체
+    doc_stats = {'total_files': 0, 'total_pages': 0}
+    embedding_stats = {'total_embeddings': 0, 'total_chunks': 0}
+    #                   *** 여기까지 UI 테스트용 더미 데이터 추가 (추후삭제) ***
 
     col1, col2 = st.columns(2)
     with col1:

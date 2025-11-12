@@ -130,3 +130,76 @@ class ChatHistoryDB:
                 'user_messages': user_messages,
                 'assistant_messages': assistant_messages,
             }
+    
+    # !!! StreamLit 코드와 연동되는 메서드들 임시추가(11/11) 변경될 확률 매우 높음 !!!
+    # 임시추가된 메서드 (get_recent_sessions, get_all_sessions, get_session_messages)
+    
+    #Streamlit 코드                              호출 메서드             역할
+    #dbs['chat'].get_recent_sessions(limit=10)   get_recent_sessions()  사이드바 “최근 세션” 목록 표시
+    def get_recent_sessions(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        최근 생성된 세션 목록을 반환.
+        :param limit: 최대 반환 개수
+        :return: 세션 정보 리스트
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT session_id, session_name, created_at, updated_at, is_active
+                FROM chat_sessions
+                ORDER BY updated_at DESC
+                LIMIT ?
+            """, (limit,))
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    #Streamlit 코드                    호출 메서드            역할
+    #dbs['chat'].get_all_sessions()    get_all_sessions()    새 세션 이름 만들 때 총 개수 확인
+    def get_all_sessions(self) -> List[Dict[str, Any]]:
+        """
+        모든 세션 목록을 반환.
+        :return: 세션 정보 리스트
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT session_id, session_name, created_at, updated_at, is_active
+                FROM chat_sessions
+                ORDER BY created_at DESC
+            """)
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    #Streamlit 코드                                            호출 메서드               역할
+    #dbs['chat'].get_session_messages(session['session_id'])   get_session_messages()   클릭한 세션의 대화 불러오기
+    def get_session_messages(self, session_id: str) -> List[Dict[str, Any]]:
+        """
+        특정 세션의 모든 메시지를 반환.
+        :param session_id: 조회할 세션 ID
+        :return: 메시지 리스트
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT role, content, retrieved_chunks, timestamp
+                FROM chat_messages
+                WHERE session_id = ?
+                ORDER BY timestamp ASC
+            """, (session_id,))
+            rows = cursor.fetchall()
+            messages = []
+            for row in rows:
+                retrieved_chunks = None
+                if row['retrieved_chunks']:
+                    try:
+                        retrieved_chunks = json.loads(row['retrieved_chunks'])
+                    except json.JSONDecodeError:
+                        retrieved_chunks = None
+                messages.append({
+                    "role": row["role"],
+                    "content": row["content"],
+                    "retrieved_chunks": retrieved_chunks,
+                    "timestamp": row["timestamp"]
+                })
+            return messages
+# !!! 여기까지 StreamLit 코드와 연동되는 메서드들 임시추가(11/11) 변경될 확률 매우 높음 !!!
