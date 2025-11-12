@@ -30,6 +30,7 @@ class Config:
 
     Attributes:
         version (str): 설정 파일 버전
+        DEBUG_ON (bool): 디버그 모드 플래그
         OPENAI_API_KEY (Optional[str]): OpenAI API 키 (환경 변수 우선)
         OPENAI_MODEL (str): 사용할 LLM 모델명
         OPENAI_TEMPERATURE (float): 생성 온도 (0.0~2.0, 낮을수록 결정적)
@@ -78,6 +79,7 @@ class Config:
 
     # ==================== 버전 정보 ====================
     version: str = "1.0.0"  # 설정 스키마 버전
+    DEBUG_ON: bool = False  # 디버그 모드 플래그
 
     # ==================== OpenAI API 설정 ====================
     OPENAI_API_KEY: Optional[str] = None  # API 키 (환경 변수에서 자동 로드)
@@ -211,12 +213,17 @@ class Config:
     def save_to_json(self, config_path: Optional[str] = None) -> bool:
         """
         현재 설정을 config.json 파일로 저장
+        
+        JSON 직렬화 불가능한 타입이 있으면 ValueError 발생
 
         Args:
             config_path: config.json 파일 경로
 
         Returns:
             저장 성공 여부
+            
+        Raises:
+            ValueError: JSON 직렬화 불가능한 타입이 포함된 경우
         """
         if config_path is None:
             config_path = self.CONFIG_PATH
@@ -224,20 +231,57 @@ class Config:
         config_file = Path(config_path)
         config_file.parent.mkdir(parents=True, exist_ok=True)
 
-        try:
-            # API 키는 저장하지 않음 (보안)
-            config_dict = asdict(self)
-            config_dict.pop('_instance', None)
-            config_dict['OPENAI_API_KEY'] = None
+        # dataclass를 dict로 변환
+        config_dict = asdict(self)
+        config_dict.pop('_instance', None)
+        config_dict['OPENAI_API_KEY'] = None  # 보안: API 키 제외
 
-            with open(config_file, 'w', encoding='utf-8') as f:
+        # JSON 직렬화 가능 여부 검증
+        for key, value in config_dict.items():
+            if value is None:
+                continue
+            
+            # 허용 타입: str, int, float, bool, list, dict
+            if not isinstance(value, (str, int, float, bool, list, dict)):
+                try:
+                    json.dumps(value)
+                except (TypeError, ValueError):
+                    raise ValueError(
+                        f"Config.{key}의 타입 '{type(value).__name__}'은 JSON 직렬화 불가능합니다. "
+                        f"허용 타입: str, int, float, bool, list, dict"
+                    )
+
+        # 임시 파일로 저장
+        temp_file = config_path + ".tmp"
+        Path(temp_file).unlink(missing_ok=True)
+        estimated_size = len(json.dumps(config_dict, ensure_ascii=False).encode('utf-8'))
+
+        with open(temp_file, "w", encoding='utf-8', buffering=8192) as f:
+            if estimated_size > 10 * 1024 * 1024:
+                # 대용량 파일 스트리밍 저장
+                f.write('{\n')
+                items = list(config_dict.items())
+                for i, (key, value) in enumerate(items):
+                    f.write(f'  {json.dumps(key, ensure_ascii=False)}: ')
+                    f.write(json.dumps(value, indent=2, ensure_ascii=False).replace('\n', '\n  '))
+                    if i < len(items) - 1:
+                        f.write(',')
+                    f.write('\n')
+
+                    if i % 100 == 0:
+                        f.flush()
+                f.write('}')
+            else:
                 json.dump(config_dict, f, indent=2, ensure_ascii=False)
 
-            print(f"✓ 설정 파일 저장 완료: {config_path}")
-            return True
-        except Exception as e:
-            print(f"✗ 설정 파일 저장 실패: {e}")
-            return False
+            f.flush()
+            os.fsync(f.fileno())
+
+        # 원자적 교체 (atomic replace)
+        os.replace(temp_file, config_path)
+
+        print(f"[Config] 설정 파일 저장: {config_path}")
+        return True
 
     def validate(self) -> bool:
         """
