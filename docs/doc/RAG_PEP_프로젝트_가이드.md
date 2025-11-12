@@ -74,16 +74,16 @@ Python 개발자가 특정 기능, 표준, 문법 등에 대한 질문을 자연
 
 ### 1.3. 프로젝트 기간 및 일정
 
-- **프로젝트 기간**: 3주 (2025-11-08 ~ 2025-11-28)
-- **Week 1 (11/08-11/14)**: 프로젝트 기반 구축, DB 스키마, 더미 데이터, UI 프로토타입
-- **Week 2 (11/15-11/21)**: 핵심 기능 개발 (문서 처리, 임베딩, LLM 통합)
-- **Week 3 (11/22-11/28)**: 통합 테스트, 성능 최적화, 문서화, 발표 준비
+- **프로젝트 기간**: 3주 (2025-11-10 ~ 2025-11-28)
+- **Week 1 (11/10(월)-11/16(일))**: 프로젝트 기반 구축, DB 스키마, 더미 데이터, UI 프로토타입
+- **Week 2 (11/17(월)-11/23(일))**: 핵심 기능 개발 (문서 처리, 임베딩, LLM 통합)
+- **Week 3 (11/24(월)-11/28(금))**: 통합 테스트, 성능 최적화, 문서화, 발표 준비
 
 **주요 마일스톤:**
-- M1 (11/09): 프로젝트 초기 설정 완료
-- M2 (11/11): DB 스키마 및 더미 데이터 완성
-- M3 (11/14): UI 프로토타입 동작
-- M6 (11/21): 전체 모듈 통합 완료
+- M1 (11/11): 프로젝트 초기 설정 완료
+- M2 (11/13): DB 스키마 및 더미 데이터 완성
+- M3 (11/16): UI 프로토타입 동작
+- M6 (11/23): 전체 모듈 통합 완료
 - M13 (11/28): 최종 발표 및 프로젝트 회고
 
 ---
@@ -94,10 +94,10 @@ Python 개발자가 특정 기능, 표준, 문법 등에 대한 질문을 자연
 
 ```mermaid
 graph TB
-    A["사용자 (Streamlit UI)"] --> B["개발자 4: UI 통합"]
-    B --> C["개발자 1: 문서 수집"]
-    B --> D["개발자 2: 임베딩 처리"]
-    B --> E["개발자 3: LLM 챗봇"]
+    A["사용자 (Streamlit UI)"] --> B["오형주: UI 통합"]
+    B --> C["신승목: 문서 수집"]
+    B --> D["김명환: 임베딩 처리"]
+    B --> E["이민규: LLM 챗봇"]
     C --> F["documents.db"]
     D --> G["embeddings.db"]
     D --> H["FAISS Index"]
@@ -111,10 +111,10 @@ graph TB
 
 | 역할 | 담당자 | 핵심 업무 |
 |------|--------|-----------|
-| 개발자 1 | [이름] | 문서 수집 및 원본 전처리 (PDF/HWP → Markdown 변환 및 DB 저장) |
-| 개발자 2 | [이름] | 임베딩 처리 (Markdown → 벡터 임베딩 및 FAISS 저장) |
-| 개발자 3 | [이름] | LLM 기반 정보 추출 및 요약 시스템 |
-| 개발자 4 | [이름] | Streamlit UI 개발 및 통합 |
+| 신승목 | [이름] | 문서 수집 및 원본 전처리 (PDF/HWP → Markdown 변환 및 DB 저장) |
+| 김명환 | [이름] | 임베딩 처리 (Markdown → 벡터 임베딩 및 FAISS 저장) |
+| 이민규 | [이름] | LLM 기반 정보 추출 및 요약 시스템 |
+| 오형주 | [이름] | Streamlit UI 개발 및 통합 |
 
 ### 2.1. 데이터베이스 설계
 
@@ -189,16 +189,16 @@ graph TB
 
 | 구성 요소 | 기술 | 담당자 |
 |---------|------|--------|
-| 문서 처리 | PyPDF2, pdfplumber, olefile (HWP) | 개발자 1 |
-| Markdown 변환 | Custom converter, BeautifulSoup | 개발자 1 |
-| 토큰 계산 | tiktoken (GPT tokenizer) | 개발자 1 |
+| 문서 처리 | PyPDF2, pdfplumber, olefile (HWP) | 신승목 |
+| Markdown 변환 | Custom converter, BeautifulSoup | 신승목 |
+| 토큰 계산 | tiktoken (GPT tokenizer) | 신승목 |
 | 데이터베이스 | SQLite3 | 전체 팀 |
-| 텍스트 청킹 | LangChain RecursiveCharacterTextSplitter | 개발자 2 |
-| 임베딩 | OpenAI Embedding API (text-embedding-3-small) | 개발자 2 |
-| 벡터 DB | FAISS | 개발자 2 |
-| LLM | OpenAI API (gpt-4o-mini, gpt-4o) | 개발자 3 |
-| 프레임워크 | LangChain | 개발자 3 |
-| UI | Streamlit | 개발자 4 |
+| 텍스트 청킹 | LangChain RecursiveCharacterTextSplitter | 김명환 |
+| 임베딩 | OpenAI Embedding API (text-embedding-3-small) | 김명환 |
+| 벡터 DB | FAISS | 김명환 |
+| LLM | OpenAI API (gpt-4o-mini, gpt-4o) | 이민규 |
+| 프레임워크 | LangChain | 이민규 |
+| UI | Streamlit | 오형주 |
 | 버전 관리 | Git/GitHub | 전체 팀 |
 
 ### 2.3. 핵심 처리 흐름
@@ -226,7 +226,7 @@ graph TD
     P --> Q["Streamlit 인터페이스"]
 ```
 
-#### Phase 1: 문서 수집 및 변환 (개발자 1)
+#### Phase 1: 문서 수집 및 변환 (신승목)
 1. PDF/HWP 파일 수집
 2. 파일 해시 (SHA-256) 계산 및 중복 확인
 3. Markdown 변환 시 페이지 구분자 삽입
@@ -236,7 +236,7 @@ graph TD
 5. GPT tokenizer로 토큰 수 계산
 6. `documents.db`에 저장
 
-#### Phase 2: 임베딩 처리 (개발자 2)
+#### Phase 2: 임베딩 처리 (김명환)
 1. 마크다운 문서를 청킹 (chunk_size, chunk_overlap)
 2. 임베딩 전처리 옵션 적용
    - Markdown 태그 제거 여부
@@ -247,7 +247,7 @@ graph TD
 5. 청크별 페이지 범위 및 토큰 수 추정 저장
 6. `embeddings.db` 및 FAISS 파일 저장
 
-#### Phase 3: 정보 추출 및 요약 (개발자 3)
+#### Phase 3: 정보 추출 및 요약 (이민규)
 1. 사용자 질의 입력
 2. 질의 임베딩 생성
 3. FAISS에서 유사 청크 검색 (top-k)
@@ -255,7 +255,7 @@ graph TD
 5. LangChain 활용한 답변 생성
 6. 대화 내역을 `chat_history.db`에 저장
 
-#### Phase 4: UI 구현 (개발자 4)
+#### Phase 4: UI 구현 (오형주)
 **왼쪽 사이드바:**
 - OpenAI API Key 입력
 - 데이터 업데이트 버튼
@@ -304,7 +304,7 @@ graph LR
 - 더미 함수를 실제 로직으로 대체
 - 통합 테스트
 
-### 3.1. 데이터 수집 및 전처리 (개발자 1)
+### 3.1. 데이터 수집 및 전처리 (신승목)
 
 #### 3.1.1. 문서 포맷 처리
 
@@ -428,7 +428,7 @@ def save_document_to_db(file_path, db_path='data/documents.db'):
     return file_hash
 ```
 
-### 3.2. 문서 청킹 전략 (개발자 2)
+### 3.2. 문서 청킹 전략 (김명환)
 
 #### 3.2.1. 청크 크기 최적화
 
@@ -526,7 +526,7 @@ $$
 
 권장 오버랩 비율은 10-20%입니다. 너무 높으면 저장 공간 낭비, 너무 낮으면 문맥 손실이 발생합니다.
 
-#### 3.2.2. 전처리 옵션 (개발자 2)
+#### 3.2.2. 전처리 옵션 (김명환)
 
 **임베딩 전 전처리 전략:**
 
@@ -562,7 +562,7 @@ def calculate_embedding_hash(file_hash, chunk_size, chunk_overlap, preprocessing
     return hashlib.sha256(config_str.encode()).hexdigest()
 ```
 
-### 3.3. 임베딩 및 벡터 DB 구축 (개발자 2)
+### 3.3. 임베딩 및 벡터 DB 구축 (김명환)
 
 #### 3.3.1. 임베딩 모델 선정
 
@@ -687,7 +687,7 @@ def create_and_save_embeddings(file_hash, chunk_size=1000, chunk_overlap=200,
     return embedding_hash
 ```
 
-### 3.4. Retrieval 시스템 구현 (개발자 2 → 개발자 3)
+### 3.4. Retrieval 시스템 구현 (김명환 → 이민규)
 
 #### 3.4.1. 기본 검색 함수
 
@@ -882,7 +882,7 @@ def mmr_retrieval(query, vector_store, embedding_function, k=5, lambda_param=0.5
     return selected
 ```
 
-### 3.5. Generation 시스템 구현 (개발자 3)
+### 3.5. Generation 시스템 구현 (이민규)
 
 #### 3.5.1. LLM 답변 생성
 
@@ -1513,18 +1513,18 @@ def create_optimized_index(embeddings, use_gpu=True):
 
 | 역할 | 담당자 | 핵심 업무 | 주요 산출물 |
 |------|--------|-----------|------------|
-| 개발자 1 | [이름] | 문서 수집 및 원본 전처리 | documents.db, 변환 스크립트 |
-| 개발자 2 | [이름] | 임베딩 처리 및 검색 | embeddings.db, FAISS 인덱스, 검색 API |
-| 개발자 3 | [이름] | LLM 챗봇 및 대화 관리 | chat_history.db, RAG 파이프라인 |
-| 개발자 4 | [이름] | UI 개발 및 통합 | Streamlit 앱, 통합 테스트 |
+| 신승목 | [이름] | 문서 수집 및 원본 전처리 | documents.db, 변환 스크립트 |
+| 김명환 | [이름] | 임베딩 처리 및 검색 | embeddings.db, FAISS 인덱스, 검색 API |
+| 이민규 | [이름] | LLM 챗봇 및 대화 관리 | chat_history.db, RAG 파이프라인 |
+| 오형주 | [이름] | UI 개발 및 통합 | Streamlit 앱, 통합 테스트 |
 
 **모듈 간 인터페이스:**
 
 ```mermaid
 graph LR
-    A["개발자 1"] -->|"file_hash"| B["개발자 2"]
-    B -->|"embedding_hash"| C["개발자 3"]
-    C -->|"session_id"| D["개발자 4"]
+    A["신승목"] -->|"file_hash"| B["김명환"]
+    B -->|"embedding_hash"| C["이민규"]
+    C -->|"session_id"| D["오형주"]
     D -->|"사용자 입력"| A
 ```
 
@@ -1573,30 +1573,30 @@ graph LR
 
 ### 5.3. 타임라인 관리
 
-**프로젝트 일정 (3주, 2025-11-08 ~ 2025-11-28):**
+**프로젝트 일정 (3주, 2025-11-10 ~ 2025-11-28):**
 
 ```mermaid
 gantt
     title RAG PEP 프로젝트 타임라인 (3주)
     dateFormat  YYYY-MM-DD
-    
+
     section Week 1: 기반 구축
-    환경 설정 및 초기화        :w1d1, 2025-11-08, 1d
+    환경 설정 및 초기화        :w1d1, 2025-11-10, 1d
     더미 데이터 생성           :w1d2, after w1d1, 1d
     DB 스키마 구축             :w1d3, after w1d2, 2d
     UI 프로토타입 개발         :w1d4, after w1d3, 2d
     Week 1 통합 테스트         :milestone, m1, after w1d4, 0d
-    
+
     section Week 2: 핵심 기능 개발
-    문서 수집 및 변환 (개발자1) :w2d1, 2025-11-15, 3d
-    임베딩 처리 (개발자2)       :w2d2, 2025-11-15, 3d
-    LLM 챗봇 개발 (개발자3)     :w2d3, 2025-11-15, 3d
-    UI 통합 개발 (개발자4)      :w2d4, 2025-11-15, 3d
+    문서 수집 및 변환 (신승목) :w2d1, 2025-11-17, 3d
+    임베딩 처리 (김명환)       :w2d2, 2025-11-17, 3d
+    LLM 챗봇 개발 (이민규)     :w2d3, 2025-11-17, 3d
+    UI 통합 개발 (오형주)      :w2d4, 2025-11-17, 3d
     모듈 통합 작업              :w2d5, after w2d1, 3d
     Week 2 통합 완료            :milestone, m2, after w2d5, 0d
-    
+
     section Week 3: 최적화 및 마무리
-    전체 통합 테스트           :w3d1, 2025-11-22, 2d
+    전체 통합 테스트           :w3d1, 2025-11-24, 2d
     성능 평가 및 최적화        :w3d2, after w3d1, 2d
     문서화 및 README           :w3d3, after w3d2, 1d
     발표 자료 준비             :w3d4, after w3d3, 1d
@@ -1607,9 +1607,9 @@ gantt
 
 | 주차 | 기간 | 주요 목표 | 마일스톤 |
 |------|------|-----------|---------|
-| Week 1 | 11/08-11/14 | 프로젝트 기반 구축 | M1-M3: 초기 설정, DB, UI 프로토타입 |
-| Week 2 | 11/15-11/21 | 핵심 기능 개발 | M4-M6: 문서 처리, 임베딩, LLM 통합 |
-| Week 3 | 11/22-11/28 | 통합, 테스트, 배포 | M7-M13: 통합, 최적화, 문서화, 발표 |
+| Week 1 | 11/10(월)-11/16(일) | 프로젝트 기반 구축 | M1-M3: 초기 설정, DB, UI 프로토타입 |
+| Week 2 | 11/17(월)-11/23(일) | 핵심 기능 개발 | M4-M6: 문서 처리, 임베딩, LLM 통합 |
+| Week 3 | 11/24(월)-11/28(금) | 통합, 테스트, 배포 | M7-M13: 통합, 최적화, 문서화, 발표 |
 
 **주간 체크리스트는 [프로젝트 체크리스트](./프로젝트_체크리스트.md) 참조**
 

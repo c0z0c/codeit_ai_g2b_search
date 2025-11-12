@@ -4,6 +4,11 @@
 
 ### 1단계: 패키지 설치
 
+```
+gcloud compute firewall-rules list --project=sprint-ai-chunk2-03
+gcloud compute ssh spai0433@codeit-ai-g2b-search --zone=us-central1-c --project=sprint-ai-chunk2-03
+```
+
 ```bash
 pip install -r requirements.txt
 ```
