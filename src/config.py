@@ -119,6 +119,7 @@ class Config:
 
     # ==================== 문서 처리 설정 ====================
     EMPTY_PAGE_THRESHOLD: int = 10  # 빈 페이지 판별 기준 (10자 이하)
+    ERROR_PAGE_MARKER: str = "--- [오류페이지] ---"  # 오류 페이지 마커 문자열 (변환실패)
     EMPTY_PAGE_MARKER: str = "--- [빈페이지] ---"  # 빈 페이지 마커 문자열
     PAGE_MARKER_FORMAT: str = "--- 페이지 {page_num} ---"  # 페이지 구분자 포맷
     TOKEN_ESTIMATION_DIVISOR: int = 4  # 토큰 수 추정용 나눗수 (문자수/4 ≈ 토큰수)
