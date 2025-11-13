@@ -8,10 +8,16 @@ try:
 except ImportError:
     LANGCHAIN_AVAILABLE = False
 
-from src.db import DocumentsDB, EmbeddingsDB
+from src.db.documents_db import DocumentsDB
 from src.config import get_config
 from src.utils.logging_config import get_logger
 from src.vectorstore import VectorStoreManager
+
+import importlib
+from src.db import documents_db
+importlib.reload(documents_db)
+from src.db.documents_db import DocumentsDB
+
 
 class EmbeddingProcessor:
     """
@@ -21,7 +27,7 @@ class EmbeddingProcessor:
     주요 기능:
     - 문서 청킹: 긴 텍스트를 작은 청크로 나눔
     - 벡터 임베딩 생성: VectorStoreManager를 통한 임베딩 생성 및 저장
-    - 메타데이터 관리: 임베딩과 원본 데이터 간의 매핑 관리
+    - 메타데이터 관리: Document.metadata에 모든 청크 정보 저장
     """
 
     def __init__(
@@ -42,7 +48,7 @@ class EmbeddingProcessor:
         self.config = config or get_config()
 
         # 로거 초기화
-        self.logger = get_logger(__name__)
+        self.logger = get_logger('[EMBP]')
 
         # 파라미터 우선, 없으면 Config 사용
         self.chunking_mode = self.config.CHUNKING_MODE
@@ -52,16 +58,11 @@ class EmbeddingProcessor:
         self.vector_path = self.config.VECTORSTORE_PATH
 
         # 데이터베이스 초기화
-        self.docs_db = DocumentsDB()
-        self.embeddings_db = EmbeddingsDB()
+        self.docs_db = DocumentsDB(self.config.DOCUMENTS_DB_PATH)
         
         # VectorStoreManager 초기화
         try:
-            self.vector_manager = VectorStoreManager(
-                vector_path=self.vector_path,
-                embedding_model=self.embedding_model,
-                embeddings_db=self.embeddings_db
-            )
+            self.vector_manager = VectorStoreManager(config=self.config)
         except ImportError as e:
             self.logger.error(f"VectorStoreManager 초기화 실패: {e}")
             self.vector_manager = None
@@ -178,13 +179,18 @@ class EmbeddingProcessor:
 
         # VectorStoreManager를 통해 벡터 추가
         try:
-            # 메타데이터 생성 (페이지 정보 포함)
+            # 메타데이터 생성 (페이지 정보 + 버전 정보 포함)
+            from datetime import datetime
             metadatas = [
                 {
                     'file_hash': file_hash,
                     'file_name': file_info['file_name'],
                     'start_page': chunk_page_info[i]['start_page'],
-                    'end_page': chunk_page_info[i]['end_page']
+                    'end_page': chunk_page_info[i]['end_page'],
+                    'chunk_type': 'paragraph',
+                    'chunk_index': i,
+                    'embedding_version': self.embedding_model,
+                    'created_at': datetime.now().isoformat()
                 }
                 for i in range(len(chunks))
             ]
@@ -207,33 +213,8 @@ class EmbeddingProcessor:
             self.logger.error(f"임베딩 처리 실패: {e}")
             return False
 
-        # 설정 저장 또는 조회
-        config_id = self.embeddings_db.get_or_create_config(
-            chunk_size=self.chunk_size,
-            chunk_overlap=self.chunk_overlap,
-            embedding_model=self.embedding_model,
-            vector_path=self.vector_path
-        )
-
-        # 청크 매핑 저장 (DB에 메타데이터 저장)
-        for idx, chunk_text in enumerate(chunks):
-            vector_index = start_index + idx
-            self.embeddings_db.insert_chunk_mapping(
-                file_hash=file_hash,
-                file_name=file_info['file_name'],
-                chunk_text=chunk_text,
-                vector_index=vector_index,
-                estimated_tokens=len(chunk_text) // self.config.TOKEN_ESTIMATION_DIVISOR,
-                start_page=chunk_page_info[idx]['start_page'],
-                end_page=chunk_page_info[idx]['end_page']
-            )
-
-        # 총 청크 수 업데이트
-        total_chunks_in_db = self.embeddings_db.get_total_chunks()
-        self.embeddings_db.update_total_chunks(config_id, total_chunks_in_db)
-
         self.logger.info(
             f"임베딩 처리 완료: {file_hash[:16]}... "
-            f"(추가 {total_chunks}개 청크, 총 {total_chunks_in_db}개 청크)"
+            f"(추가 {total_chunks}개 청크, 총 {self.vector_manager.get_vector_count()}개 청크)"
         )
         return True

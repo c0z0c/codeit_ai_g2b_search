@@ -2,6 +2,8 @@
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
+from datetime import datetime
+from zoneinfo import ZoneInfo  # Python 3.9 이상에서 사용 가능
 
 try:
     import faiss
@@ -13,12 +15,16 @@ try:
     from langchain_community.vectorstores import FAISS
     from langchain_openai import OpenAIEmbeddings
     from langchain.docstore.document import Document
+    
+    # LangChain FAISS 객체 재구성
+    from langchain_community.docstore.in_memory import InMemoryDocstore
+    from langchain_community.vectorstores.utils import DistanceStrategy
+
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
 
 from src.config import get_config, Config
-from src.db import EmbeddingsDB
 from src.utils.logging_config import get_logger
 
 
@@ -33,20 +39,18 @@ class VectorStoreManager:
     - FAISS 인덱스 생성/로드/저장
     - 벡터 추가 (단일/배치)
     - 유사도 검색
-    - 메타데이터 관리 (EmbeddingsDB 연동)
+    - 메타데이터 관리 (Document.metadata)
     
     Attributes:
         vector_path: FAISS 인덱스 파일 경로
         embedding_model: 임베딩 모델명
         embeddings: LangChain OpenAIEmbeddings 객체
         vectorstore: LangChain FAISS 벡터스토어
-        embeddings_db: 임베딩 데이터베이스 객체
     """
     
     def __init__(
         self,
-        config=None,
-        embeddings_db: Optional[EmbeddingsDB] = None
+        config=None
     ):
         """
         VectorStoreManager 초기화
@@ -67,7 +71,6 @@ class VectorStoreManager:
         self.vector_path = Path(self.config.VECTORSTORE_PATH)
         self.embedding_model = self.config.OPENAI_EMBEDDING_MODEL
         self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
-        self.embeddings_db = embeddings_db or EmbeddingsDB(self.config.EMBEDDINGS_DB_PATH)
         self.vectorstore: Optional[FAISS] = None
         
         
@@ -92,7 +95,10 @@ class VectorStoreManager:
                     'start_page': 0,
                     'end_page': 0,
                     'chunk_type': 'dummy',
-                    'chunk_index': 0
+                    'chunk_index': 0,
+                    "embedding_version": self.config.OPENAI_EMBEDDING_MODEL,
+                    "created_at": datetime.now(ZoneInfo("Asia/Seoul")).isoformat()
+                    
                 }
             )
             self.vectorstore = FAISS.from_documents([dummy_doc], self.embeddings)
@@ -289,82 +295,6 @@ class VectorStoreManager:
             self.logger.error(f"검색 실패: {e}")
             return []
     
-    def search_with_metadata(
-        self,
-        query: str,
-        top_k: int = 5,
-        file_hash: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
-        """
-        EmbeddingsDB와 연동하여 메타데이터를 포함한 검색 결과를 반환합니다.
-        
-        Args:
-            query: 검색 쿼리
-            top_k: 반환할 상위 결과 개수
-            file_hash: 특정 파일로 필터링 (선택)
-        
-        Returns:
-            List[Dict[str, Any]]: 메타데이터를 포함한 검색 결과 리스트
-                - score: 유사도 점수 (0~1, 1이 가장 유사)
-                - file_name: 파일명
-                - start_page: 시작 페이지 번호
-                - end_page: 종료 페이지 번호
-                - chunk_text: 청크 텍스트
-                - file_hash: 파일 해시 (선택적)
-                - distance: L2 거리 (선택적)
-        """
-        # 기본 검색 수행
-        search_k = top_k * 10 if file_hash else top_k
-        raw_results = self.search(query, search_k)
-        
-        if not raw_results:
-            return []
-        
-        # 메타데이터 보강 및 형식 변환
-        enriched_results = []
-        for doc, distance in raw_results:
-            # vector_index 추출 (메타데이터에 저장된 경우)
-            vector_index = doc.metadata.get('vector_index')
-            
-            if vector_index is not None:
-                # DB에서 청크 정보 조회
-                chunk = self.embeddings_db.get_chunk_by_vector_index(vector_index)
-                
-                if chunk:
-                    # file_hash 필터링
-                    if file_hash and chunk.get('file_hash') != file_hash:
-                        continue
-                    
-                    # 유사도 점수 계산 (L2 distance → similarity, 0~1 정규화)
-                    # distance가 0에 가까울수록 유사도 높음
-                    score = 1.0 / (1.0 + float(distance))
-                    
-                    # 결과 형식 생성 (score 순으로 정렬됨)
-                    result = {
-                        'score': round(score, 4),
-                        'file_name': chunk.get('file_name', 'unknown'),
-                        'start_page': chunk.get('start_page'),
-                        'end_page': chunk.get('end_page'),
-                        'chunk_text': doc.page_content,
-                        'file_hash': chunk.get('file_hash'),
-                        'distance': round(float(distance), 4)
-                    }
-                    
-                    enriched_results.append(result)
-                    
-                    # top_k 도달 시 중단
-                    if len(enriched_results) >= top_k:
-                        break
-        
-        # 유사도(score) 기준 내림차순 정렬 (높은 순)
-        enriched_results.sort(key=lambda x: x['score'], reverse=True)
-        
-        self.logger.info(
-            f"메타데이터 보강 완료: {len(enriched_results)}개 결과 "
-            f"(최고 score: {enriched_results[0]['score'] if enriched_results else 0:.4f})"
-        )
-        return enriched_results
-    
     def get_vector_count(self) -> int:
         """
         현재 저장된 벡터 수를 반환합니다.
@@ -389,6 +319,40 @@ class VectorStoreManager:
             bool: 삭제 성공 여부
         """
         return self.remove_by_metadata({'file_hash': file_hash})
+    
+    def rebuild_without_file(self, file_hash: str) -> bool:
+        """
+        특정 파일을 제외하고 FAISS 인덱스를 재구성합니다.
+        
+        Args:
+            file_hash: 제외할 파일 해시
+        
+        Returns:
+            bool: 재구성 성공 여부
+        """
+        if self.vectorstore is None:
+            if not self.load():
+                return False
+        
+        # 필터링
+        texts, metadatas = [], []
+        for idx in range(self.vectorstore.index.ntotal):
+            doc_id = self.vectorstore.index_to_docstore_id.get(idx)
+            if doc_id is None:
+                continue
+            
+            doc = self.vectorstore.docstore.search(doc_id)
+            if doc and doc.metadata.get('file_hash') != file_hash:
+                texts.append(doc.page_content)
+                metadatas.append(doc.metadata)
+        
+        # 재구성
+        if not texts:
+            return self._create_dummy_index()
+        
+        success = self.create_from_documents(texts, metadatas)
+        self.logger.info(f"파일 제거 후 재구성: {len(texts)}개 벡터")
+        return success
     
     def remove_by_metadata(
         self, 
@@ -485,9 +449,6 @@ class VectorStoreManager:
         new_index = faiss.IndexFlatL2(dimension)
         new_index.add(vectors)
         
-        # LangChain FAISS 객체 재구성
-        from langchain_community.docstore.in_memory import InMemoryDocstore
-        from langchain_community.vectorstores.utils import DistanceStrategy
         
         docstore = InMemoryDocstore({
             str(i): doc for i, doc in enumerate(keep_docs)
