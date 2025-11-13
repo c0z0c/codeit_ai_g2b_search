@@ -86,24 +86,20 @@ class EmbeddingProcessor:
 
     def clean_markdown_text(self, text: str) -> str:
         """
-        마크다운 텍스트에서 임베딩에 불필요한 요소를 제거합니다.
-        
-        PEP 문서(PDF/HWP) RAG 시스템 특성상 실질 텍스트 내용만 유지하며,
-        페이지 마커(ERROR_PAGE_MARKER, EMPTY_PAGE_MARKER, PAGE_MARKER_FORMAT)는
-        문서 추적을 위해 보존합니다.
+        제안서 검토용 마크다운 전처리: 구조 보존 우선
         
         제거 대상:
-        - HTML 태그: <div>, <span>, <table> 등
-        - Mermaid 다이어그램: ```mermaid ... ```
-        - 코드 블록: ```python ... ``` (언어 지정 블록)
-        - 마크다운 문법: #, **, *, ~~, [링크](url), ![이미지](url)
-        - 리스트 기호: -, *, 숫자.
-        - 특수 구분선: ---, ***, ___ (단, 페이지 마커는 보존)
-        - 인용: > 기호
+        - HTML 태그
+        - 이미지 링크
+        - 강조 기호 (**bold**, *italic*)
         
         유지 대상:
-        - ERROR_PAGE_MARKER, EMPTY_PAGE_MARKER, PAGE_MARKER_FORMAT
-        - 실질 텍스트 내용
+        - 표 구조 (|)
+        - 코드 블록 (```)
+        - 헤딩 (#)
+        - 리스트 (-, 1.)
+        - 인라인 코드 (`)
+        - 페이지 마커
         
         Args:
             text (str): 원본 마크다운 텍스트
@@ -114,12 +110,11 @@ class EmbeddingProcessor:
         if not text or not isinstance(text, str):
             return ""
         
-        # 페이지 마커 임시 보호 (플레이스홀더로 치환)
+        # 페이지 마커 보호
         error_marker = self.config.ERROR_PAGE_MARKER
         empty_marker = self.config.EMPTY_PAGE_MARKER
         page_marker_pattern = r'--- 페이지 \d+ ---'
         
-        # 페이지 마커를 고유 플레이스홀더로 치환
         protected_markers = {}
         marker_counter = 0
         
@@ -130,7 +125,6 @@ class EmbeddingProcessor:
                 protected_markers[placeholder] = marker
                 marker_counter += 1
         
-        # 페이지 번호 마커 보호
         page_markers = re.findall(page_marker_pattern, text)
         for pm in page_markers:
             placeholder = f"__PROTECTED_MARKER_{marker_counter}__"
@@ -138,57 +132,31 @@ class EmbeddingProcessor:
             protected_markers[placeholder] = pm
             marker_counter += 1
         
-        # 1. 코드 블록 제거 (```로 감싸진 블록)
-        text = re.sub(r'```[\s\S]*?```', ' ', text)
-        
-        # 2. HTML 태그 제거
+        # 1. HTML 태그 제거
         text = re.sub(r'<[^>]+>', ' ', text)
         
-        # 3. 이미지 링크 제거: ![alt](url)
-        text = re.sub(r'!\[([^\]]*)\]\([^\)]+\)', ' ', text)
+        # 2. 이미지 링크 제거: ![alt](url)
+        text = re.sub(r'!\[([^\]]*)\]\([^\)]+\)', '', text)
         
-        # 4. 링크를 텍스트만 유지: [text](url) -> text
+        # 3. 링크를 텍스트만 유지: [text](url) -> text
         text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
         
-        # 5. 마크다운 헤딩 기호 제거: #, ##, ### 등
-        text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+        # 4. 강조 기호만 제거 (내용 유지)
+        text = re.sub(r'\*\*([^\*]+)\*\*', r'\1', text)
+        text = re.sub(r'\*([^\*]+)\*', r'\1', text)
+        text = re.sub(r'~~([^~]+)~~', r'\1', text)
+        text = re.sub(r'__([^_]+)__', r'\1', text)
+        text = re.sub(r'_([^_]+)_', r'\1', text)
         
-        # 6. 강조 문법 제거: **bold**, *italic*, ~~strikethrough~~
-        text = re.sub(r'\*\*([^\*]+)\*\*', r'\1', text)  # **bold**
-        text = re.sub(r'\*([^\*]+)\*', r'\1', text)      # *italic*
-        text = re.sub(r'~~([^~]+)~~', r'\1', text)       # ~~strikethrough~~
-        text = re.sub(r'__([^_]+)__', r'\1', text)       # __bold__
-        text = re.sub(r'_([^_]+)_', r'\1', text)         # _italic_
+        # 5. 연속 공백 정리
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        text = re.sub(r'[ \t]{2,}', ' ', text)
         
-        # 7. 인용 기호 제거: > quote
-        text = re.sub(r'^>\s+', '', text, flags=re.MULTILINE)
-        
-        # 8. 리스트 기호 제거: -, *, 1., 2. 등
-        text = re.sub(r'^[\-\*]\s+', '', text, flags=re.MULTILINE)  # - item, * item
-        text = re.sub(r'^\d+\.\s+', '', text, flags=re.MULTILINE)   # 1. item
-        
-        # 9. 특수 구분선 제거: ---, ***, ___
-        # (단, 페이지 마커는 이미 보호됨)
-        text = re.sub(r'^[\-\*_]{3,}\s*$', ' ', text, flags=re.MULTILINE)
-        
-        # 10. 테이블 구분자 제거: | 기호
-        text = re.sub(r'\|', ' ', text)
-        
-        # 11. 인라인 코드 제거: `code`
-        text = re.sub(r'`([^`]+)`', r'\1', text)
-        
-        # 12. 연속된 공백/줄바꿈 정리
-        text = re.sub(r'\n{3,}', '\n\n', text)  # 3개 이상 줄바꿈 -> 2개
-        text = re.sub(r'[ \t]{2,}', ' ', text)  # 연속 공백 -> 1개
-        
-        # 보호된 마커 복원
+        # 마커 복원
         for placeholder, original in protected_markers.items():
             text = text.replace(placeholder, original)
         
-        # 13. 앞뒤 공백 제거
-        text = text.strip()
-        
-        return text
+        return text.strip()
 
     def process_document(self, file_hash: str, api_key: Optional[str] = None) -> bool:
         """
