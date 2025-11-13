@@ -173,6 +173,26 @@ class DocumentsDB:
             """, (file_hash, file_name, total_pages, file_size, text_content, datetime.now()))
             conn.commit()
             return True
+        
+    def get_document_by_hash(self, file_hash: str) -> Optional[Dict[str, Any]]:
+        """
+        파일 해시값으로 문서 정보 조회
+
+        Args:
+            file_hash (str): 조회할 파일의 해시값
+
+        Returns:
+            Optional[Dict[str, Any]]: 문서 정보 (없으면 None 반환)
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM TB_DOCUMENTS WHERE file_hash = ?
+            """, (file_hash,))
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+            return None
 
     def get_document_stats(self) -> Dict[str, Any]:
         """
@@ -202,6 +222,59 @@ class DocumentsDB:
                 'total_size_bytes': total_size,
                 'total_size_mb': round(total_size / (1024 * 1024), 2),
             }
+            
+    def search_documents(self, 
+                        search_term: str, 
+                        search_type: str = 'auto') -> List[Dict[str, Any]]:
+        """
+        파일명 또는 file_hash로 문서 검색
+        
+        Args:
+            search_term (str): 검색어 (파일명 또는 file_hash)
+            search_type (str): 검색 타입
+                - 'auto': file_hash 형식(64자 hex)이면 hash 검색, 아니면 filename 검색
+                - 'filename': file_name LIKE 검색
+                - 'hash': file_hash 완전 일치 검색
+        
+        Returns:
+            List[Dict[str, Any]]: 검색 결과 리스트
+        
+        Example:
+            >>> # file_hash로 검색
+            >>> results = db.search_documents("abc123def456...")
+            >>> 
+            >>> # 파일명으로 검색
+            >>> results = db.search_documents("공고문", search_type='filename')
+            >>> 
+            >>> # 자동 판별
+            >>> results = db.search_documents("test.pdf", search_type='auto')
+        """
+        if not search_term:
+            self.logger.warning("검색어가 비어있습니다.")
+            return []
+        
+        # search_type 결정
+        if search_type == 'auto':
+            # 64자 hex 문자열이면 hash 검색
+            if len(search_term) == 64 and all(c in '0123456789abcdefABCDEF' for c in search_term):
+                search_type = 'hash'
+            else:
+                search_type = 'filename'
+        
+        # 검색 쿼리 실행
+        if search_type == 'hash':
+            query = "SELECT * FROM TB_DOCUMENTS WHERE file_hash = ?"
+            params = (search_term,)
+        elif search_type == 'filename':
+            query = "SELECT * FROM TB_DOCUMENTS WHERE file_name LIKE ?"
+            params = (f"%{search_term}%",)
+        else:
+            self.logger.error(f"지원하지 않는 search_type: {search_type}")
+            return []
+        
+        results = self.execute_query(query, params)
+        self.logger.debug(f"검색 완료: {len(results)}건 ({search_type} 모드, 검색어: {search_term})")
+        return results
             
     def execute_query(self, query: str, params: Optional[tuple] = None) -> List[Dict[str, Any]]:
         """

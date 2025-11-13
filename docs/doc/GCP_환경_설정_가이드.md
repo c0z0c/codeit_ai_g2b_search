@@ -29,9 +29,7 @@ author: "김명환"
 
 ```bash
 # gcloud를 통한 VM 접속
-gcloud compute ssh spai0433@codeit-ai-g2b-search \
-  --project=sprint-ai-chunk2-03 \
-  --zone=us-central1-c
+gcloud compute ssh spai0433@codeit-ai-g2b-search --project=sprint-ai-chunk2-03 --zone=us-central1-c
 ```
 
 ### 시스템 업데이트

@@ -15,7 +15,7 @@ sys.path.insert(0, str(project_root))
 import hashlib
 from datetime import datetime
 
-from src.db import DocumentsDB, EmbeddingsDB, ChatHistoryDB
+from src.db import DocumentsDB, ChatHistoryDB
 from src.utils import get_logger
 import tiktoken
 
@@ -27,7 +27,6 @@ class DummyDataGenerator:
 
     def __init__(self):
         self.docs_db = DocumentsDB()
-        self.embeddings_db = EmbeddingsDB()
         self.chat_db = ChatHistoryDB()
         self.tokenizer = tiktoken.encoding_for_model("gpt-4")
 

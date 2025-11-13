@@ -6,7 +6,7 @@ sys.path.insert(0, str(project_root))
 
 import hashlib
 from datetime import datetime
-from src.db import DocumentsDB, EmbeddingsDB, ChatHistoryDB
+from src.db import DocumentsDB, ChatHistoryDB
 import tiktoken
 
 # tiktoken 인코더 초기화

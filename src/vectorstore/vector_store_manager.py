@@ -73,6 +73,8 @@ class VectorStoreManager:
         self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
         self.vectorstore: Optional[FAISS] = None
         
+        # chunk_map: (file_hash, chunk_index) -> (faiss_idx, chunk_hash)
+        self.chunk_map: Dict[Tuple[str, int], Tuple[int, str]] = {}
         
         self.logger.info(
             f"VectorStoreManager 초기화 완료 "
@@ -96,6 +98,7 @@ class VectorStoreManager:
                     'end_page': 0,
                     'chunk_type': 'dummy',
                     'chunk_index': 0,
+                    'chunk_hash': 'd001',
                     "embedding_version": self.config.OPENAI_EMBEDDING_MODEL,
                     "created_at": datetime.now(ZoneInfo("Asia/Seoul")).isoformat()
                     
@@ -147,7 +150,39 @@ class VectorStoreManager:
             f"FAISS 인덱스 로드 완료: {self.vector_path} "
             f"(벡터 수: {vector_count})"
         )
+        
+        # chunk_map 구축
+        self._build_chunk_map()
+        
         return True
+    
+    def _build_chunk_map(self) -> None:
+        """
+        docstore를 순회하여 chunk_map을 구축합니다.
+        (file_hash, chunk_index) -> (faiss_idx, chunk_hash) 매핑
+        """
+        self.chunk_map.clear()
+        
+        for idx in range(self.vectorstore.index.ntotal):
+            doc_id = self.vectorstore.index_to_docstore_id.get(idx)
+            if not doc_id:
+                continue
+            
+            doc = self.vectorstore.docstore.search(doc_id)
+            if not doc:
+                continue
+            
+            file_hash = doc.metadata.get('file_hash')
+            chunk_index = doc.metadata.get('chunk_index')
+            chunk_hash = doc.metadata.get('chunk_hash')
+            
+            # 필수 필드가 없으면 스킵 (더미 데이터 등)
+            if not file_hash or chunk_index is None or not chunk_hash:
+                continue
+            
+            self.chunk_map[(file_hash, chunk_index)] = (idx, str(chunk_hash))
+        
+        self.logger.info(f"chunk_map 구축 완료: {len(self.chunk_map)}개 매핑")
         
     
     def create_from_documents(
@@ -192,40 +227,117 @@ class VectorStoreManager:
     ) -> Tuple[bool, int]:
         """
         기존 FAISS 인덱스에 텍스트를 추가합니다.
+        chunk_map을 활용하여 중복 체크 및 chunk_hash 비교를 수행합니다.
         
+        중복 처리 전략:
+        - 동일 (file_hash, chunk_index) 발견 시:
+          - chunk_hash 동일: 무시
+          - chunk_hash 다름: 기존 벡터 삭제 후 추가
+
         Args:
             texts: 추가할 텍스트 리스트
             metadatas: 메타데이터 리스트 (선택)
-        
+
         Returns:
             Tuple[bool, int]: (성공 여부, 추가 전 벡터 인덱스 시작 위치)
+            
+        Raises:
+            ValueError: chunk_index 누락 시
         """
         if self.vectorstore is None:
             # 인덱스가 없으면 새로 생성
             if not self.load():
                 self.logger.info("기존 인덱스 없음. 새 인덱스 생성")
                 success = self.create_from_documents(texts, metadatas)
+                if success:
+                    self._build_chunk_map()
                 return success, 0
+
+        # 현재 벡터 수 확인
+        old_vector_count = self.vectorstore.index.ntotal
+        self.logger.info(f"old_vector_count={old_vector_count}")
+
+        # 중복 체크 및 삭제 대상 수집
+        import hashlib
+        to_remove_indices = []
+        texts_to_add = []
+        metadatas_to_add = []
         
-        try:
-            # 현재 벡터 수 저장
-            start_index = self.vectorstore.index.ntotal
+        for text, meta in zip(texts, metadatas or [{}] * len(texts)):
+            file_hash = meta.get('file_hash')
+            chunk_index = meta.get('chunk_index')
+            new_chunk_hash = meta.get('chunk_hash') or hashlib.sha256(text.encode('utf-8')).hexdigest()
             
-            # LangChain add_texts() 사용
-            self.vectorstore.add_texts(
-                texts=texts,
-                metadatas=metadatas or [{}] * len(texts)
-            )
+            # chunk_index 누락 시 Error
+            if chunk_index is None:
+                raise ValueError(
+                    f"chunk_index 누락 (file_hash={file_hash})"
+                )
             
-            self.logger.info(
-                f"벡터 추가 완료: {len(texts)}개 "
-                f"(시작 인덱스: {start_index}, 총 {self.vectorstore.index.ntotal}개)"
-            )
-            return True, start_index
+            key = (file_hash, chunk_index)
+            
+            if key in self.chunk_map:
+                old_faiss_idx, old_chunk_hash = self.chunk_map[key]
+                
+                if str(old_chunk_hash) != str(new_chunk_hash):
+                    # chunk_hash 다름 -> 삭제 후 추가
+                    to_remove_indices.append(old_faiss_idx)
+                    texts_to_add.append(text)
+                    metadatas_to_add.append(meta)
+                    self.logger.info(
+                        f"중복 감지 (다른 chunk_hash) → 삭제 예정: {key}"
+                    )
+                else:
+                    # chunk_hash 동일 -> 무시
+                    self.logger.info(
+                        f"중복 무시 (동일 chunk_hash): {key}"
+                    )
+            else:
+                # 새 벡터 추가
+                texts_to_add.append(text)
+                metadatas_to_add.append(meta)
         
-        except Exception as e:
-            self.logger.error(f"벡터 추가 실패: {e}")
-            return False, 0
+        # 삭제 대상이 있으면 삭제
+        if to_remove_indices:
+            self.logger.info(f"{len(to_remove_indices)}개 중복 벡터 삭제")
+            self._remove_by_indices(to_remove_indices)
+        
+        # 추가할 텍스트가 없으면 종료
+        if not texts_to_add:
+            self.logger.info("추가할 새 벡터 없음")
+            return True, self.vectorstore.index.ntotal
+        
+        # 현재 벡터 수 저장
+        start_index = self.vectorstore.index.ntotal
+
+        # LangChain add_texts() 사용
+        self.vectorstore.add_texts(
+            texts=texts_to_add,
+            metadatas=metadatas_to_add
+        )
+        
+        # 임베딩 개수가 1개일 경우 더미 데이터 삭제
+        if old_vector_count == 1:
+            self.logger.info("더미 데이터 삭제를 수행합니다.")
+            self.remove_by_metadata({"chunk_type": "dummy"})
+        
+        # chunk_map 업데이트
+        for i, meta in enumerate(metadatas_to_add):
+            file_hash = meta.get('file_hash')
+            chunk_index = meta.get('chunk_index')
+            chunk_hash = meta.get('chunk_hash')
+            
+            if file_hash and chunk_index is not None and chunk_hash:
+                self.chunk_map[(file_hash, chunk_index)] = (
+                    start_index + i, str(chunk_hash)
+                )
+
+        self.logger.info(
+            f"벡터 추가 완료: {len(texts_to_add)}개 "
+            f"(시작 인덱스: {start_index}, 총 {self.vectorstore.index.ntotal}개)"
+        )
+        return True
+
     
     def save(self) -> bool:
         """
@@ -287,9 +399,7 @@ class VectorStoreManager:
                 k=top_k,
                 filter=filter_metadata
             )
-            
-            self.logger.info(f"검색 완료: {len(results)}개 결과 반환")
-            return results
+            return results           
         
         except Exception as e:
             self.logger.error(f"검색 실패: {e}")
@@ -420,6 +530,32 @@ class VectorStoreManager:
             self.logger.error(f"벡터 삭제 실패: {e}")
             return False
     
+    def _remove_by_indices(self, indices: List[int]) -> None:
+        """
+        특정 인덱스의 벡터를 삭제합니다 (재구성 방식).
+        
+        Args:
+            indices: 삭제할 FAISS 인덱스 리스트
+        """
+        if not indices:
+            return
+        
+        keep_indices = [
+            i for i in range(self.vectorstore.index.ntotal) 
+            if i not in indices
+        ]
+        keep_docs = []
+        
+        for idx in keep_indices:
+            doc_id = self.vectorstore.index_to_docstore_id.get(idx)
+            if doc_id:
+                doc = self.vectorstore.docstore.search(doc_id)
+                if doc:
+                    keep_docs.append(doc)
+        
+        self._rebuild_index(keep_indices, keep_docs)
+        self.logger.info(f"{len(indices)}개 인덱스 삭제 완료")
+    
     def _rebuild_index(
         self, 
         keep_indices: List[int], 
@@ -427,14 +563,26 @@ class VectorStoreManager:
     ) -> None:
         """
         필터링된 벡터로 FAISS 인덱스를 재구성합니다.
+        빈 인덱스일 경우 더미 생성 없이 빈 상태 유지합니다.
         
         Args:
             keep_indices: 유지할 벡터의 인덱스 리스트
             keep_docs: 유지할 Document 리스트
         """
         if not keep_docs:
-            # 빈 인덱스 생성
-            self._create_dummy_index()
+            # 빈 인덱스 생성 (더미 없음)
+            dimension = self.vectorstore.index.d
+            new_index = faiss.IndexFlatL2(dimension)
+            
+            self.vectorstore = FAISS(
+                embedding_function=self.embeddings,
+                index=new_index,
+                docstore=InMemoryDocstore({}),
+                index_to_docstore_id={},
+                distance_strategy=DistanceStrategy.EUCLIDEAN_DISTANCE
+            )
+            self.chunk_map.clear()
+            self.logger.info("빈 인덱스로 재구성 (더미 없음)")
             return
         
         # 기존 벡터 추출
@@ -449,7 +597,6 @@ class VectorStoreManager:
         new_index = faiss.IndexFlatL2(dimension)
         new_index.add(vectors)
         
-        
         docstore = InMemoryDocstore({
             str(i): doc for i, doc in enumerate(keep_docs)
         })
@@ -462,6 +609,9 @@ class VectorStoreManager:
             index_to_docstore_id=index_to_id,
             distance_strategy=DistanceStrategy.EUCLIDEAN_DISTANCE
         )
+        
+        # 재구성 후 chunk_map 재구축
+        self._build_chunk_map()
 
     def summary(self) -> None:
         """

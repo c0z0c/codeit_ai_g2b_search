@@ -95,7 +95,6 @@ graph TB
 
     subgraph DAL["💾 데이터 접근 계층"]
         DocsDB["DocumentsDB"]
-        EmbDB["EmbeddingsDB"]
         ChatDB["ChatHistoryDB"]
     end
 
