@@ -225,7 +225,7 @@ class EmbeddingProcessor:
             preprocessing_option={},
             embedding_model=self.embedding_model,
             total_chunks=total_chunks,
-            faiss_index_path=faiss_path
+            vector_path=faiss_path
         )
 
         # 청크 매핑 저장
@@ -305,13 +305,13 @@ class Retrieval:
 
         # 임베딩 메타데이터 가져오기
         meta = self.embeddings_db.get_embedding_meta(embedding_hash)
-        if not meta or not meta.get('faiss_index_path'):
+        if not meta or not meta.get('vector_path'):
             print(f"임베딩을 찾을 수 없습니다: {embedding_hash[:8]}...")
             return []
 
         # FAISS 인덱스 로드
         try:
-            index = faiss.read_index(meta['faiss_index_path'])
+            index = faiss.read_index(meta['vector_path'])
         except Exception as e:
             print(f"FAISS 인덱스 로드 실패: {e}")
             return []

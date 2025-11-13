@@ -151,7 +151,7 @@ graph TB
 - `preprocessing_option` (TEXT): 전처리 옵션 (JSON)
 - `embedding_model` (TEXT): 임베딩 모델명
 - `total_chunks` (INTEGER): 총 청크 수
-- `faiss_index_path` (TEXT): FAISS 인덱스 파일 경로
+- `vector_path` (TEXT): FAISS 인덱스 파일 경로
 - `created_at` (TIMESTAMP)
 - `updated_at` (TIMESTAMP)
 
@@ -653,7 +653,7 @@ def create_and_save_embeddings(file_hash, chunk_size=1000, chunk_overlap=200,
     cursor.execute("""
         INSERT OR REPLACE INTO embedding_meta
         (embedding_hash, file_hash, chunk_size, chunk_overlap, preprocessing_option,
-         embedding_model, total_chunks, faiss_index_path, created_at, updated_at)
+         embedding_model, total_chunks, vector_path, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         embedding_hash, file_hash, chunk_size, chunk_overlap,
@@ -706,7 +706,7 @@ def search_similar_chunks(query, embedding_hash, top_k=5):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT faiss_index_path 
+        SELECT vector_path 
         FROM embedding_meta 
         WHERE embedding_hash = ?
     """, (embedding_hash,))

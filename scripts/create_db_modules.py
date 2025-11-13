@@ -123,7 +123,7 @@ class EmbeddingsDB:
                     preprocessing_option TEXT,
                     embedding_model TEXT NOT NULL,
                     total_chunks INTEGER NOT NULL,
-                    faiss_index_path TEXT,
+                    vector_path TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )

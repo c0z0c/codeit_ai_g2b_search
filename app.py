@@ -47,9 +47,9 @@ def init_dbs():
     """데이터베이스 초기화"""
     cfg = get_config()
     return {
-        'docs': DocumentsDB(cfg.DOCUMENTS_DB),
-        'embeddings': EmbeddingsDB(cfg.EMBEDDINGS_DB),
-        'chat': ChatHistoryDB(cfg.CHAT_HISTORY_DB)
+        'docs': DocumentsDB(cfg.DOCUMENTS_DB_PATH),
+        'embeddings': EmbeddingsDB(cfg.EMBEDDINGS_DB_PATH),
+        'chat': ChatHistoryDB(cfg.CHAT_HISTORY_DB_PATH)
     }
 
 dbs = init_dbs()
