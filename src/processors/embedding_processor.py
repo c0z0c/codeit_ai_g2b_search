@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 import re
 
 try:
@@ -86,20 +87,11 @@ class EmbeddingProcessor:
 
     def clean_markdown_text(self, text: str) -> str:
         """
-        제안서 검토용 마크다운 전처리: 구조 보존 우선
+        통합 마크다운 전처리: config 옵션에 따라 선택적 처리
         
-        제거 대상:
-        - HTML 태그
-        - 이미지 링크
-        - 강조 기호 (**bold**, *italic*)
-        
-        유지 대상:
-        - 표 구조 (|)
-        - 코드 블록 (```)
-        - 헤딩 (#)
-        - 리스트 (-, 1.)
-        - 인라인 코드 (`)
-        - 페이지 마커
+        config.MARKDOWN_PROTECT_BLOCKS: 보호할 블록 타입 ['code', 'math', 'inline_math', 'mermaid']
+        config.MARKDOWN_REMOVE_ELEMENTS: 제거할 요소 ['html', 'images', 'links', 'emphasis', 'headers']
+        config.MARKDOWN_MAX_LINES: 블록 타입별 최대 라인 수 {'code': 100, 'math': 50}
         
         Args:
             text (str): 원본 마크다운 텍스트
@@ -110,51 +102,118 @@ class EmbeddingProcessor:
         if not text or not isinstance(text, str):
             return ""
         
-        # 페이지 마커 보호
-        error_marker = self.config.ERROR_PAGE_MARKER
-        empty_marker = self.config.EMPTY_PAGE_MARKER
-        page_marker_pattern = r'--- 페이지 \d+ ---'
+        # 1. 특수 블록 보호 (코드, 수식 등)
+        protected_blocks = {}
+        block_counter = 0
         
+        # 코드 블록 보호 (최우선)
+        if 'code' in self.config.MARKDOWN_PROTECT_BLOCKS:
+            # 4백틱 코드 블록 (중첩 방지)
+            pattern_4 = r'````[\s\S]*?````'
+            for match in re.finditer(pattern_4, text):
+                placeholder = f"XPROTECTEDXCODE4X{block_counter}X"
+                protected_blocks[placeholder] = match.group(0)
+                text = text.replace(match.group(0), placeholder, 1)
+                block_counter += 1
+            
+            # 3백틱 코드 블록
+            pattern_3 = r'```[\s\S]*?```'
+            for match in re.finditer(pattern_3, text):
+                placeholder = f"XPROTECTEDXCODE3X{block_counter}X"
+                protected_blocks[placeholder] = match.group(0)
+                text = text.replace(match.group(0), placeholder, 1)
+                block_counter += 1
+        
+        # 수식 블록 보호
+        if 'math' in self.config.MARKDOWN_PROTECT_BLOCKS:
+            pattern_math = r'\$\$[\s\S]*?\$\$'
+            for match in re.finditer(pattern_math, text):
+                placeholder = f"XPROTECTEDXMATHX{block_counter}X"
+                protected_blocks[placeholder] = match.group(0)
+                text = text.replace(match.group(0), placeholder, 1)
+                block_counter += 1
+        
+        # 인라인 수식 보호
+        if 'inline_math' in self.config.MARKDOWN_PROTECT_BLOCKS:
+            pattern_inline = r'(?<!\$)\$(?!\$)[^\$\n]+?\$(?!\$)'
+            for match in re.finditer(pattern_inline, text):
+                placeholder = f"XPROTECTEDXINLINEX{block_counter}X"
+                protected_blocks[placeholder] = match.group(0)
+                text = text.replace(match.group(0), placeholder, 1)
+                block_counter += 1
+        
+        # 2. 페이지 마커 보호 (항상 보호) - 순차 교체로 중복 방지
         protected_markers = {}
         marker_counter = 0
         
-        for marker in [error_marker, empty_marker]:
-            if marker in text:
-                placeholder = f"__PROTECTED_MARKER_{marker_counter}__"
-                text = text.replace(marker, placeholder)
-                protected_markers[placeholder] = marker
-                marker_counter += 1
-        
-        page_markers = re.findall(page_marker_pattern, text)
-        for pm in page_markers:
-            placeholder = f"__PROTECTED_MARKER_{marker_counter}__"
-            text = text.replace(pm, placeholder)
-            protected_markers[placeholder] = pm
+        # ERROR_PAGE_MARKER 보호
+        error_marker = self.config.ERROR_PAGE_MARKER
+        for match in re.finditer(re.escape(error_marker), text):
+            placeholder = f"XPROTECTEDXMARKERX{marker_counter}X"
+            protected_markers[placeholder] = match.group(0)
+            text = text.replace(match.group(0), placeholder, 1)
             marker_counter += 1
         
-        # 1. HTML 태그 제거
-        text = re.sub(r'<[^>]+>', ' ', text)
+        # EMPTY_PAGE_MARKER 보호
+        empty_marker = self.config.EMPTY_PAGE_MARKER
+        for match in re.finditer(re.escape(empty_marker), text):
+            placeholder = f"XPROTECTEDXMARKERX{marker_counter}X"
+            protected_markers[placeholder] = match.group(0)
+            text = text.replace(match.group(0), placeholder, 1)
+            marker_counter += 1
         
-        # 2. 이미지 링크 제거: ![alt](url)
-        text = re.sub(r'!\[([^\]]*)\]\([^\)]+\)', '', text)
+        # 페이지 번호 마커 보호
+        page_marker_pattern = r'--- 페이지 \d+ ---'
+        for match in re.finditer(page_marker_pattern, text):
+            placeholder = f"XPROTECTEDXMARKERX{marker_counter}X"
+            protected_markers[placeholder] = match.group(0)
+            text = text.replace(match.group(0), placeholder, 1)
+            marker_counter += 1
         
-        # 3. 링크를 텍스트만 유지: [text](url) -> text
-        text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+        # 3. 탈출문자 처리 (보호 블록 외부만)
+        text = re.sub(r'\\([*_\[\]()#+-])', r'\1', text)
         
-        # 4. 강조 기호만 제거 (내용 유지)
-        text = re.sub(r'\*\*([^\*]+)\*\*', r'\1', text)
-        text = re.sub(r'\*([^\*]+)\*', r'\1', text)
-        text = re.sub(r'~~([^~]+)~~', r'\1', text)
-        text = re.sub(r'__([^_]+)__', r'\1', text)
-        text = re.sub(r'_([^_]+)_', r'\1', text)
+        # 3. 요소 제거 (config 옵션에 따라)
+        if 'html' in self.config.MARKDOWN_REMOVE_ELEMENTS:
+            text = re.sub(r'<[^>]+>', ' ', text)
         
-        # 5. 연속 공백 정리
+        if 'images' in self.config.MARKDOWN_REMOVE_ELEMENTS:
+            text = re.sub(r'!\[([^\]]*)\]\([^\)]+\)', '', text)
+        
+        if 'links' in self.config.MARKDOWN_REMOVE_ELEMENTS:
+            text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+        
+        if 'emphasis' in self.config.MARKDOWN_REMOVE_ELEMENTS:
+            text = re.sub(r'\*\*([^\*]+)\*\*', r'\1', text)
+            text = re.sub(r'\*([^\*]+)\*', r'\1', text)
+            text = re.sub(r'~~([^~]+)~~', r'\1', text)
+            text = re.sub(r'__([^_]+)__', r'\1', text)
+            text = re.sub(r'_([^_]+)_', r'\1', text)
+            text = re.sub(r'_([^_]+)_', r'\1', text)
+        
+        if 'headers' in self.config.MARKDOWN_REMOVE_ELEMENTS:
+            text = re.sub(r'^#+\s+', '', text, flags=re.MULTILINE)
+        
+        if 'blockquotes' in self.config.MARKDOWN_REMOVE_ELEMENTS:
+            text = re.sub(r'^>\s*', '', text, flags=re.MULTILINE)
+            
+        # if 'lists' in self.config.MARKDOWN_REMOVE_ELEMENTS:
+        #     text = re.sub(r'^\s*[-*+]\s+', '', text, flags=re.MULTILINE)  # 순서 없는 리스트
+        #     # text = re.sub(r'^\s*\d+[.)]\s+', '', text, flags=re.MULTILINE)  # 순서 있는 리스트            
+                    
+        # 4. 공백 정리
+        text = re.sub(r'^\s+', '', text, flags=re.MULTILINE)  # 각 라인 시작 공백 제거
         text = re.sub(r'\n{3,}', '\n\n', text)
-        text = re.sub(r'[ \t]{2,}', ' ', text)
+        text = re.sub(r'[ \t]{2,}', ' ', text) 
         
-        # 마커 복원
-        for placeholder, original in protected_markers.items():
-            text = text.replace(placeholder, original)
+        # 5. 복원 (역순: 나중에 보호한 것부터 복원하여 중첩 방지)
+        # 먼저 블록 복원 (코드, 수식)
+        for placeholder in sorted(protected_blocks.keys(), reverse=True):
+            text = text.replace(placeholder, protected_blocks[placeholder])
+        
+        # 나중에 마커 복원 (페이지 구분자)
+        for placeholder in sorted(protected_markers.keys(), reverse=True):
+            text = text.replace(placeholder, protected_markers[placeholder])
         
         return text.strip()
 
