@@ -348,6 +348,7 @@ pip install tqdm
 ### documents.db
 
 #### TB_DOCUMENTS
+
 | 컬럼명 | 타입 | 설명 |
 |--------|------|------|
 | file_hash | TEXT PRIMARY KEY | 파일 고유 해시값 |
@@ -361,6 +362,7 @@ pip install tqdm
 ### chat_history.db
 
 #### chat_sessions
+
 | 컬럼명 | 타입 | 설명 |
 |--------|------|------|
 | session_id | TEXT PRIMARY KEY | 세션 고유 ID (UUID) |
@@ -370,6 +372,7 @@ pip install tqdm
 | is_active | BOOLEAN | 활성 상태 |
 
 #### chat_messages
+
 | 컬럼명 | 타입 | 설명 |
 |--------|------|------|
 | message_id | INTEGER PRIMARY KEY | 메시지 고유 ID |

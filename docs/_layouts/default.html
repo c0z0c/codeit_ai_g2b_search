@@ -1122,27 +1122,23 @@
         /* mermaid 컨테이너/글자/높이/간격 조정 (수정) */
         .mermaid {
             width: 100%;
-            /* max-width: 100%; */
-            /* margin: 0 auto 5px; */
-            font-size: 12px;
-            /* 높이를 고정하지 않고 내용에 따라 자동으로 조정 */
+            max-width: 80%; /* 다이어그램 너비를 화면의 80%로 제한 */
+            font-size: 10px; /* 글꼴 크기를 줄여 다이어그램 크기 축소 */
             display: block;
         }
 
         .mermaid svg {
             width: 100%;
-            /* width: 100% !important; */
-            max-width: 100%;
-            font-size: 12px;
-            /* height: auto !important; */ /* 고정 높이 제거하여 GitHub 렌더링과 유사하게 동작 */
+            max-width: 80%; /* SVG 크기 제한 */
+            font-size: 10px; /* SVG 글꼴 크기 축소 */
             display: block;
         }
 
         .mermaid.diagram-large svg {
             /* 필요시 큰 다이어그램에만 최대 높이 제한 적용 */
-            /* max-width: 100%; */
             width: 100%;
-            font-size: 12px;
+            max-width: 80%;
+            font-size: 10px;
             /* max-height: 1000px !important; */
         }
     </style>
