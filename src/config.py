@@ -85,7 +85,7 @@ class Config:
 
     # ==================== OpenAI API 설정 ====================
     OPENAI_API_KEY: Optional[str] = None  # API 키 (환경 변수에서 자동 로드)
-    OPENAI_MODEL: str = "gpt-4o-mini"  # 답변 생성용 LLM 모델
+    OPENAI_MODEL: str = "gpt-5-mini"  # 답변 생성용 LLM 모델
     OPENAI_TEMPERATURE: float = 0.0  # 생성 온도 (0.0=결정적, 2.0=창의적)
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"  # 임베딩 모델
     OPENAI_TOKENIZER_MODEL: str = "gpt-4"  # 토큰 카운팅용 모델명
@@ -160,7 +160,7 @@ class Config:
 참고 문서:
 {context}
 
-질문: {query}
+질문: {question}
 
 답변:"""  # RAG 시스템 프롬프트 템플릿 ({context}, {query} 플레이스홀더)
 

@@ -8,6 +8,7 @@ try:
 except ImportError:
     LANGCHAIN_AVAILABLE = False
 
+from openai import OpenAI
 from src.config import get_config
 from src.utils.logging_config import get_logger
 
@@ -24,95 +25,171 @@ class LLMProcessor:
 
     def __init__(self, model: Optional[str] = None, temperature: Optional[float] = None, config=None):
         """
-        LLMProcessor 초기화 메서드.
+        LLMProcessor 초기화
 
         Args:
-            model: 사용할 LLM 모델 이름 (예: "gpt-4")
-            temperature: 생성 온도 (값이 높을수록 출력이 다양해짐)
-            config: 사용자 정의 설정 객체 (없을 경우 기본 설정 사용)
+            model: LLM 모델명
+            temperature: 생성 온도
+            config: 설정 객체
         """
-        # Config 로드
         self.config = config or get_config()
-
-        # 로거 초기화
         self.logger = get_logger(__name__)
-
-        # 모델 및 온도 설정 (파라미터 우선, 없으면 Config 사용)
         self.model_name = model or self.config.OPENAI_MODEL
         self.temperature = temperature if temperature is not None else self.config.OPENAI_TEMPERATURE
-
-        # LangChain 초기화
-        if LANGCHAIN_AVAILABLE:
-            self.llm = ChatOpenAI(model=self.model_name, temperature=self.temperature)
-            self.logger.info(
-                f"LLMProcessor 초기화 완료 (model={self.model_name}, temperature={self.temperature})"
-            )
-        else:
-            self.logger.error("LangChain이 설치되지 않았습니다.")
+        
+        if not LANGCHAIN_AVAILABLE:
+            self.logger.error("LangChain 미설치")
+            raise ImportError("LangChain 라이브러리 필요")
+        
+        self.logger.info(f"LLMProcessor 초기화 (model={self.model_name}, temperature={self.temperature})")
 
     def generate_response(
         self,
-        query: str,
-        retrieved_chunks: List[Dict[str, Any]],
-        api_key: Optional[str] = None
+        question: str,
+        retrieved_chunks: Any,
+        api_key: Optional[str] = None,
+        max_chunks: Optional[int] = None
     ) -> str:
         """
-        검색된 청크를 바탕으로 LLM 응답 생성.
+        검색된 청크를 컨텍스트로 활용하여 LLM 응답 생성 (OpenAI 직접 사용)
 
         Args:
-            query: 사용자 질문
-            retrieved_chunks: 검색된 청크 리스트 (각 청크는 파일명 및 텍스트 포함)
-            api_key: OpenAI API 키 (필요 시 설정)
+            question: 사용자 질문
+            retrieved_chunks: search() 또는 search_page() 결과
+            api_key: OpenAI API 키 (옵션)
+            max_chunks: 최대 청크/페이지 수
 
         Returns:
-            str: LLM 응답 텍스트
+            str: LLM 응답
         """
-        if not LANGCHAIN_AVAILABLE:
-            self.logger.error("LangChain이 설치되지 않았습니다.")
-            return "LangChain이 설치되지 않았습니다."
-
-        self.logger.info(f"LLM 응답 생성 시작: query='{query[:50]}...'")
-
         # API 키 설정
-        if api_key:
-            import os
-            os.environ['OPENAI_API_KEY'] = api_key
+        effective_api_key = api_key or self.config.OPENAI_API_KEY
+        if not effective_api_key:
+            self.logger.error("OpenAI API 키 미설정")
+            return "API 키가 설정되지 않았습니다."
 
         # 컨텍스트 구성
-        if not retrieved_chunks:
-            # 검색된 청크가 없을 경우 기본 메시지 사용
+        context = self._build_context(retrieved_chunks, max_chunks)
+        if not context:
+            self.logger.warning("검색 결과 없음")
             context = self.config.NO_CONTEXT_MESSAGE
-            self.logger.warning("검색된 청크가 없습니다.")
-        else:
-            # 검색된 청크를 컨텍스트로 변환
-            context_parts = []
-            for i, chunk in enumerate(retrieved_chunks, 1):
-                file_name = chunk.get('file_name', 'unknown')
-                chunk_text = chunk.get('chunk_text', '')
-                context_parts.append(
-                    self.config.CONTEXT_FORMAT.format(
-                        index=i,
-                        file_name=file_name,
-                        chunk_text=chunk_text
-                    )
-                )
-            context = "\n\n".join(context_parts)
-            self.logger.debug(f"컨텍스트 구성 완료: {len(retrieved_chunks)}개 청크")
+        
+        self.logger.debug(f"context size = {len(context)}")
 
-        # 프롬프트 템플릿 로드
+        # 프롬프트 템플릿 적용
         template = self.config.RAG_PROMPT_TEMPLATE
+        user_message = template.format(context=context, question=question)
 
-        # LangChain 프롬프트 생성
-        prompt = ChatPromptTemplate.from_template(template)
-        chain = prompt | self.llm
+        # OpenAI 클라이언트 생성
+        client = OpenAI(api_key=effective_api_key)
 
+        # 모델별 파라미터 설정
+        params: Dict[str, Any] = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": user_message}]
+        }
+
+        if self.model_name.startswith(("gpt-5", "gpt-4.1", "o1")):
+            params["max_completion_tokens"] = 50000
+            self.logger.debug(f"모델 {self.model_name}: temperature 제외, max_completion_tokens 사용")
+        else:
+            params["temperature"] = self.temperature
+            params["max_tokens"] = 50000
+            self.logger.debug(f"모델 {self.model_name}: temperature={self.temperature} 사용")
+
+        # API 호출
         try:
-            # LLM 호출 및 응답 생성
-            self.logger.debug(f"LLM API 호출 중... (모델: {self.model_name})")
-            response = chain.invoke({"context": context, "query": query})
-            self.logger.info(f"LLM 응답 생성 완료: {len(response.content)} 문자")
-            return response.content
+            response = client.chat.completions.create(**params)
+            #answer = response.choices[0].message.content
+            self.logger.debug(f"LLM 응답 생성 완료")
+            return response
+            #return answer
         except Exception as e:
-            # 오류 발생 시 메시지 반환
-            self.logger.error(f"응답 생성 중 오류 발생: {e}")
-            return f"응답 생성 중 오류 발생: {e}"
+            self.logger.error(f"OpenAI API 호출 실패: {e}")
+            raise
+
+
+    def _build_context(
+        self,
+        retrieved_chunks: Any,
+        max_chunks: Optional[int] = None
+    ) -> str:
+        """
+        검색 결과 형태에 따라 컨텍스트를 자동 생성합니다.
+
+        Args:
+            retrieved_chunks: search() 또는 search_page() 결과
+            max_chunks: 최대 청크/페이지 수
+
+        Returns:
+            str: 포맷된 컨텍스트 문자열
+        """
+        if isinstance(retrieved_chunks, dict) and 'pages' in retrieved_chunks:
+            return self._build_context_from_pages(retrieved_chunks['pages'], max_chunks)
+        
+        if isinstance(retrieved_chunks, list) and retrieved_chunks:
+            return self._build_context_from_chunks(retrieved_chunks, max_chunks)
+        
+        return ""
+
+
+    def _build_context_from_chunks(
+        self,
+        chunks: List[Dict[str, Any]],
+        max_chunks: Optional[int] = None
+    ) -> str:
+        """
+        search() 결과에서 컨텍스트 생성
+        
+        Args:
+            chunks: 청크 리스트
+            max_chunks: 최대 포함 개수
+        """
+        if max_chunks:
+            chunks = chunks[:max_chunks]
+        
+        context_parts = []
+        for i, chunk in enumerate(chunks, 1):
+            file_name = chunk.get('file_name', 'unknown')
+            chunk_text = chunk.get('text', '')
+            
+            context_parts.append(
+                self.config.CONTEXT_FORMAT.format(
+                    index=i,
+                    file_name=file_name,
+                    chunk_text=chunk_text
+                )
+            )
+        
+        self.logger.debug(f"컨텍스트 구성 (search): {len(chunks)}개 청크")
+        return "\n\n".join(context_parts)
+
+
+    def _build_context_from_pages(
+        self,
+        pages: List[Dict[str, Any]],
+        max_chunks: Optional[int] = None
+    ) -> str:
+        """
+        search_page() 결과에서 컨텍스트 생성
+        
+        Args:
+            pages: 페이지 리스트
+            max_chunks: 최대 포함 개수
+        """
+        if max_chunks:
+            pages = pages[:max_chunks]
+        
+        context_parts = []
+        for i, page in enumerate(pages, 1):
+            file_name = page.get('file_name', 'unknown')
+            page_number = page.get('page_number', 0)
+            page_text = page.get('text', '')
+            score = page.get('score', 0.0)
+            
+            context_parts.append(
+                f"[문서 {i}] {file_name} (페이지 {page_number}, 유사도: {score:.4f})\n{page_text}"
+            )
+        
+        self.logger.debug(f"컨텍스트 구성 (search_page): {len(pages)}개 페이지")
+        return "\n\n".join(context_parts)
