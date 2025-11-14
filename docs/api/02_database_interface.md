@@ -1,3 +1,14 @@
+---
+layout: default
+title: "RAG 시스템 인터페이스 문서 - Database 인터페이스 문서"
+description: "RAG 시스템 인터페이스 문서 - Database 인터페이스 문서"
+date: 2025-11-14
+author: "김명환"
+cache-control: no-cache
+expires: 0
+pragma: no-cache
+---
+
 # Database 인터페이스 문서
 
 ## 개요
@@ -80,6 +91,7 @@ print(f"총 메시지 수: {stats['total_messages']}")
 ### 데이터베이스 테이블
 
 #### chat_sessions
+
 | 컬럼명 | 타입 | 설명 |
 |--------|------|------|
 | session_id | TEXT PRIMARY KEY | 세션 고유 ID (UUID) |
@@ -89,6 +101,7 @@ print(f"총 메시지 수: {stats['total_messages']}")
 | is_active | BOOLEAN | 활성 상태 (1: 활성, 0: 비활성) |
 
 #### chat_messages
+
 | 컬럼명 | 타입 | 설명 |
 |--------|------|------|
 | message_id | INTEGER PRIMARY KEY | 메시지 고유 ID (자동 증가) |
@@ -248,6 +261,7 @@ db.summary()
 ### 데이터베이스 테이블
 
 #### TB_DOCUMENTS
+
 | 컬럼명 | 타입 | 설명 |
 |--------|------|------|
 | file_hash | TEXT PRIMARY KEY | 파일 고유 해시값 (중복 불가) |
