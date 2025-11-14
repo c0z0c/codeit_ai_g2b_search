@@ -12,7 +12,7 @@ import sys
 # 프로젝트 루트를 sys.path에 추가
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.db import DocumentsDB, EmbeddingsDB, ChatHistoryDB
+from src.db import DocumentsDB, ChatHistoryDB
 from src.llm.retrieval import Retrieval
 from src.llm.llm_processor import LLMProcessor
 from src.config import get_config
@@ -47,9 +47,8 @@ def init_dbs():
     """데이터베이스 초기화"""
     cfg = get_config()
     return {
-        'docs': DocumentsDB(cfg.DOCUMENTS_DB),
-        'embeddings': EmbeddingsDB(cfg.EMBEDDINGS_DB),
-        'chat': ChatHistoryDB(cfg.CHAT_HISTORY_DB)
+        'docs': DocumentsDB(cfg.DOCUMENTS_DB_PATH),
+        'chat': ChatHistoryDB(cfg.CHAT_HISTORY_DB_PATH)
     }
 
 dbs = init_dbs()

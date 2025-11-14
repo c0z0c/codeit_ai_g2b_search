@@ -64,6 +64,10 @@ class Config:
         PAGE_MARKER_FORMAT (str): 페이지 번호 마커 포맷
         TOKEN_ESTIMATION_DIVISOR (int): 토큰 수 추정 나눗수 (문자수/4)
         
+        MARKDOWN_PROTECT_BLOCKS (List[str]): 보호할 블록 타입 리스트 ['code', 'math', 'inline_math', 'mermaid']
+        MARKDOWN_REMOVE_ELEMENTS (List[str]): 제거할 요소 리스트 ['html', 'images', 'links', 'emphasis', 'headers']
+        MARKDOWN_MAX_LINES (Dict[str, int]): 블록 타입별 최대 라인 수 {'code': 100, 'math': 50}
+        
         HASH_ALGORITHM (str): 해시 알고리즘 (sha256, md5 등)
         
         LOG_LEVEL (str): 로깅 레벨 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
@@ -119,9 +123,24 @@ class Config:
 
     # ==================== 문서 처리 설정 ====================
     EMPTY_PAGE_THRESHOLD: int = 10  # 빈 페이지 판별 기준 (10자 이하)
+    ERROR_PAGE_MARKER: str = "--- [오류페이지] ---"  # 오류 페이지 마커 문자열 (변환실패)
     EMPTY_PAGE_MARKER: str = "--- [빈페이지] ---"  # 빈 페이지 마커 문자열
     PAGE_MARKER_FORMAT: str = "--- 페이지 {page_num} ---"  # 페이지 구분자 포맷
     TOKEN_ESTIMATION_DIVISOR: int = 4  # 토큰 수 추정용 나눗수 (문자수/4 ≈ 토큰수)
+
+    # ==================== 마크다운 전처리 설정 ====================
+    MARKDOWN_PROTECT_BLOCKS: List[str] = field(default_factory=lambda: [
+        'code', 'math', 'inline_math', 'mermaid'
+    ])  # 보호할 블록 타입 리스트 (빈 리스트 = 보호 비활성화)
+    
+    MARKDOWN_REMOVE_ELEMENTS: List[str] = field(default_factory=lambda: [
+        'html', 'images', 'links', 'emphasis', 'headers', 'blockquotes', 'lists'
+    ])  # 제거할 요소 리스트 (빈 리스트 = 제거 비활성화)
+        
+    MARKDOWN_MAX_LINES: Dict[str, int] = field(default_factory=lambda: {
+        'code': 100,
+        'math': 50
+    })  # 블록 타입별 최대 라인 수
 
     # ==================== 해시 설정 ====================
     HASH_ALGORITHM: str = "sha256"  # 문서/임베딩 해시 알고리즘
@@ -168,6 +187,8 @@ class Config:
     def load_from_json(cls, config_path: Optional[str] = None) -> 'Config':
         """
         config.json 파일에서 설정 로드
+        
+        기존 config.json에 없는 신규 옵션은 dataclass 기본값 자동 적용
 
         Args:
             config_path: config.json 파일 경로
@@ -180,22 +201,32 @@ class Config:
 
         config_file = Path(config_path)
 
-        # 기본 설정으로 시작
-        config_data = {}
-
+        # dataclass 기본값 딕셔너리 생성
+        default_instance = cls()
+        default_dict = asdict(default_instance)
+        
         # JSON 파일이 존재하면 로드
+        config_data = {}
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
             print(f"✓ 설정 파일 로드 완료: {config_path}")
+        
+        # 신규 옵션 자동 병합 (기본값 + JSON)
+        merged_data = {**default_dict, **config_data}
+        
+        # 신규 옵션 로그 출력
+        new_keys = set(default_dict.keys()) - set(config_data.keys())
+        if new_keys and config_file.exists():
+            print(f"✓ 신규 옵션 자동 적용: {', '.join(sorted(new_keys))}")
 
         # 환경 변수에서 API 키 로드 (최우선)
         api_key = os.getenv('OPENAI_API_KEY')
         if api_key:
-            config_data['OPENAI_API_KEY'] = api_key
+            merged_data['OPENAI_API_KEY'] = api_key
 
         # Config 인스턴스 생성
-        instance = cls(**config_data)
+        instance = cls(**merged_data)
 
         # 검증
         instance.validate()
@@ -226,7 +257,7 @@ class Config:
         # dataclass를 dict로 변환
         config_dict = asdict(self)
         config_dict.pop('_instance', None)
-        config_dict['OPENAI_API_KEY'] = None  # 보안: API 키 제외
+        config_dict.pop('OPENAI_API_KEY', None)  # 보안: API 키 제외
 
         # JSON 직렬화 가능 여부 검증
         for key, value in config_dict.items():
@@ -312,6 +343,22 @@ class Config:
         # 임베딩 배치 크기 검증
         if self.EMBEDDING_BATCH_SIZE <= 0:
             errors.append("EMBEDDING_BATCH_SIZE는 양수여야 합니다.")
+        
+        # 마크다운 전처리 옵션 검증
+        valid_protect_blocks = {'code', 'math', 'inline_math', 'mermaid'}
+        invalid_protect = set(self.MARKDOWN_PROTECT_BLOCKS) - valid_protect_blocks
+        if invalid_protect:
+            errors.append(f"MARKDOWN_PROTECT_BLOCKS에 잘못된 값: {invalid_protect}. 허용: {valid_protect_blocks}")
+        
+        valid_remove_elements = {'html', 'images', 'links', 'emphasis', 'headers'}
+        invalid_remove = set(self.MARKDOWN_REMOVE_ELEMENTS) - valid_remove_elements
+        if invalid_remove:
+            errors.append(f"MARKDOWN_REMOVE_ELEMENTS에 잘못된 값: {invalid_remove}. 허용: {valid_remove_elements}")
+        
+        valid_max_lines_keys = {'code', 'math'}
+        invalid_max_lines = set(self.MARKDOWN_MAX_LINES.keys()) - valid_max_lines_keys
+        if invalid_max_lines:
+            errors.append(f"MARKDOWN_MAX_LINES에 잘못된 키: {invalid_max_lines}. 허용: {valid_max_lines_keys}")
 
         if errors:
             print("⚠ 설정 검증 실패:")
