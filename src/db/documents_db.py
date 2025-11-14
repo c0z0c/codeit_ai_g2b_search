@@ -194,6 +194,25 @@ class DocumentsDB:
                 return dict(row)
             return None
 
+    def get_documents_all(self) -> List[Dict[str, Any]]:
+        """
+        데이터베이스의 모든 문서 조회
+        
+        Returns:
+            List[Dict[str, Any]]: 문서 리스트 (file_name, file_hash, text_content 등)
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM TB_DOCUMENTS
+                ORDER BY updated_at DESC
+            """)
+            
+            columns = [desc[0] for desc in cursor.description]
+            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        
+        return results
+
     def get_document_stats(self) -> Dict[str, Any]:
         """
         데이터베이스에 저장된 문서 통계 정보를 반환
