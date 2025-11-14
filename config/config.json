@@ -1,12 +1,12 @@
 {
   "version": "1.0.0",
-  "OPENAI_API_KEY": null,
-  "OPENAI_MODEL": "gpt-4o-mini",
+  "OPENAI_MODEL": "gpt-5-mini",
   "OPENAI_TEMPERATURE": 0.0,
   "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small",
   "OPENAI_TOKENIZER_MODEL": "gpt-4",
-  "CHUNK_SIZE": 600,
-  "CHUNK_OVERLAP": 100,
+  "CHUNKING_MODE": "token",
+  "CHUNK_SIZE": 1500,
+  "CHUNK_OVERLAP": 300,
   "CHUNK_SEPARATORS": [
     "\n\n",
     "\n",
@@ -31,18 +31,40 @@
   "EMBEDDINGS_DB_PATH": "data/embeddings.db",
   "CHAT_HISTORY_DB_PATH": "data/chat_history.db",
   "VECTORSTORE_PATH": "data/vectorstore",
-  "CONFIG_PATH": "config/config.json",
+  "CONFIG_PATH": "config.json",
+  "MARKER_DUMP_ENABLED": false,
+  "MARKER_DUMP_PATH": "data/markers",
   "EMPTY_PAGE_THRESHOLD": 10,
+  "ERROR_PAGE_MARKER": "--- [오류페이지] ---",
   "EMPTY_PAGE_MARKER": "--- [빈페이지] ---",
   "PAGE_MARKER_FORMAT": "--- 페이지 {page_num} ---",
   "TOKEN_ESTIMATION_DIVISOR": 4,
+  "MARKDOWN_PROTECT_BLOCKS": [
+    "code",
+    "math",
+    "inline_math",
+    "mermaid"
+  ],
+  "MARKDOWN_REMOVE_ELEMENTS": [
+    "html",
+    "images",
+    "links",
+    "emphasis",
+    "headers",
+    "blockquotes",
+    "lists"
+  ],
+  "MARKDOWN_MAX_LINES": {
+    "code": 100,
+    "math": 50
+  },
   "HASH_ALGORITHM": "sha256",
   "LOG_LEVEL": "INFO",
   "LOG_DIR": "logs",
   "LOG_FILE_NAME": "rag_system.log",
   "LOG_FILE_MAX_BYTES": 10485760,
   "LOG_FILE_BACKUP_COUNT": 5,
-  "RAG_PROMPT_TEMPLATE": "다음 문서를 참고하여 질문에 답변해주세요.\n\n참고 문서:\n{context}\n\n질문: {query}\n\n답변:",
+  "RAG_PROMPT_TEMPLATE": "다음 문서를 참고하여 질문에 답변해주세요.\n\n참고 문서:\n{context}\n\n질문: {question}\n\n답변:",
   "NO_CONTEXT_MESSAGE": "관련 문서를 찾을 수 없습니다.",
   "CONTEXT_FORMAT": "[문서 {index}: {file_name}]\n{chunk_text}"
 }
