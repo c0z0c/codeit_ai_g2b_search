@@ -5,22 +5,38 @@
 
 ## 시스템 아키텍처
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      RAG 시스템 파이프라인                      │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph "1. 문서 처리 단계"
+        A[PDF 파일] --> B[DocumentProcessor]
+        B --> C[Markdown]
+        C --> D[(DocumentsDB)]
+    end
 
-1. 문서 처리 단계
-   PDF 파일 → DocumentProcessor → Markdown → DocumentsDB
-                                              ↓
-2. 임베딩 단계                                  │
-   DocumentsDB → EmbeddingProcessor → 청킹 → VectorStoreManager
-                                              ↓
-3. 검색 단계                              FAISS 인덱스
-   사용자 질의 → Retrieval → VectorStoreManager → 유사 청크/페이지
-                                              ↓
-4. 응답 생성 단계
-   유사 청크 + 질의 → LLMProcessor → OpenAI API → 답변
+    subgraph "2. 임베딩 단계"
+        D --> E[EmbeddingProcessor]
+        E --> F[청킹]
+        F --> G[VectorStoreManager]
+    end
+
+    subgraph "3. 검색 단계"
+        G --> H[(FAISS 인덱스)]
+        I[사용자 질의] --> J[Retrieval]
+        J --> G
+        G --> K[유사 청크/페이지]
+    end
+
+    subgraph "4. 응답 생성 단계"
+        K --> L[LLMProcessor]
+        I --> L
+        L --> M[OpenAI API]
+        M --> N[답변]
+    end
+
+    style A stroke-width:2px,stroke:#e1f5ff
+    style D stroke-width:2px,stroke:#fff4e1
+    style H stroke-width:2px,stroke:#fff4e1
+    style N stroke-width:2px,stroke:#e8f5e9
 ```
 
 ## 디렉토리 구조

@@ -11,6 +11,39 @@ Processor 클래스들은 문서 변환 및 임베딩 처리를 담당합니다.
 - **경로**: `src/processors/document_processor.py`
 - **목적**: PDF 파일을 Markdown으로 변환하고 DB에 저장
 
+### 처리 플로우
+
+```mermaid
+graph TB
+    A[PDF 파일] --> B{파일 존재 확인}
+    B -->|실패| Z[None 반환]
+    B -->|성공| C[파일 해시 계산]
+    C --> D{중복 검사}
+    D -->|중복| E[스킵 - 기존 해시 반환]
+    D -->|신규| F[페이지별 Markdown 변환]
+    F --> G{페이지 처리}
+    G -->|빈 페이지| H[EMPTY_PAGE_MARKER]
+    G -->|오류| I[ERROR_PAGE_MARKER]
+    G -->|성공| J[Markdown 텍스트]
+    H --> K[페이지 마커 추가]
+    I --> K
+    J --> K
+    K --> L{마지막 페이지?}
+    L -->|아니오| F
+    L -->|예| M[전체 텍스트 병합]
+    M --> N[텍스트 전처리]
+    N --> O[(DocumentsDB 저장)]
+    O --> P{MARKER_DUMP_ENABLED?}
+    P -->|예| Q[마커 덤프 파일 생성]
+    P -->|아니오| R[완료]
+    Q --> R
+    R --> S[file_hash 반환]
+
+    style A stroke-width:2px,stroke:#e1f5ff
+    style O stroke-width:2px,stroke:#fff4e1
+    style S stroke-width:2px,stroke:#e8f5e9
+```
+
 ### 클래스: DocumentProcessor
 
 #### 생성자
@@ -130,6 +163,45 @@ progress_callback이 제공되면 각 페이지 처리 시 다음 형식의 딕�
 ### 파일 정보
 - **경로**: `src/processors/embedding_processor.py`
 - **목적**: 문서 청킹 및 벡터 임베딩 생성
+
+### 처리 플로우
+
+```mermaid
+graph TB
+    A[(DocumentsDB)] --> B[문서 조회]
+    B --> C{기존 벡터 확인}
+    C -->|존재 & 동일 config| D[스킵]
+    C -->|존재 & 다른 config| E[기존 벡터 삭제]
+    C -->|없음| F[마크다운 텍스트 전처리]
+    E --> F
+    F --> G[페이지 마커로 분리]
+    G --> H{페이지 루프}
+    H --> I{페이지 타입}
+    I -->|빈페이지/오류| J[스킵]
+    I -->|정상| K[페이지 텍스트 정제]
+    J --> H
+    K --> L[버퍼에 추가]
+    L --> M{버퍼 크기 체크}
+    M -->|CHUNK_SIZE 미만| N{마지막?}
+    N -->|아니오| H
+    N -->|예| O{버퍼 크기}
+    M -->|CHUNK_SIZE 이상| O
+    O -->|초과| P[RecursiveTextSplitter로 분할]
+    O -->|이하| Q[단일/병합 청크]
+    P --> R[청크 메타데이터 생성]
+    Q --> R
+    R --> S{MARKER_DUMP?}
+    S -->|예| T[청크 덤프 저장]
+    S -->|아니오| U[VectorStoreManager]
+    T --> U
+    U --> V[임베딩 생성]
+    V --> W[(FAISS 인덱스)]
+    W --> X[완료]
+
+    style A stroke-width:2px,stroke:#fff4e1
+    style W stroke-width:2px,stroke:#fff4e1
+    style X stroke-width:2px,stroke:#e8f5e9
+```
 
 ### 클래스: EmbeddingProcessor
 

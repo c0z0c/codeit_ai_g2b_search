@@ -294,6 +294,24 @@ chunk_map: Dict[Tuple[str, int], Tuple[int, str, str]]
 **Key:** `(file_hash, chunk_index)`
 **Value:** `(faiss_idx, chunk_hash, embedding_config_hash)`
 
+```mermaid
+graph LR
+    A[chunk_map] --> B["Key: (file_hash, chunk_index)"]
+    A --> C["Value: (faiss_idx, chunk_hash, config_hash)"]
+
+    B --> D[file_hash: str]
+    B --> E[chunk_index: int]
+
+    C --> F[faiss_idx: int]
+    C --> G[chunk_hash: str]
+    C --> H[embedding_config_hash: str]
+
+    style A stroke-width:2px,stroke:#e1f5ff
+    style B stroke-width:2px,stroke:#fff4e1
+    style C stroke-width:2px,stroke:#ffe8e8
+```
+
+**필드 설명:**
 - `file_hash` (str): 파일 해시
 - `chunk_index` (int): 청크 인덱스
 - `faiss_idx` (int): FAISS 인덱스
@@ -312,6 +330,23 @@ chunk_map: Dict[Tuple[str, int], Tuple[int, str, str]]
 
 VectorStoreManager는 벡터 삭제 시 **재구성 방식**을 사용합니다:
 
+```mermaid
+graph TB
+    A[삭제 요청] --> B[유지할 인덱스 리스트 생성]
+    B --> C[유지할 Document 추출]
+    C --> D[기존 벡터 추출<br/>FAISS reconstruct]
+    D --> E[새 FAISS 인덱스 생성]
+    E --> F[벡터 추가]
+    F --> G[새 docstore 생성]
+    G --> H[vectorstore 재생성]
+    H --> I[chunk_map 재구축]
+    I --> J[완료]
+
+    style A stroke-width:2px,stroke:#ffe8e8
+    style J stroke-width:2px,stroke:#e8f5e9
+```
+
+**재구성 단계:**
 1. 유지할 벡터의 인덱스 리스트 생성
 2. 유지할 Document 리스트 추출
 3. 기존 벡터 추출 (FAISS reconstruct)
@@ -319,7 +354,7 @@ VectorStoreManager는 벡터 삭제 시 **재구성 방식**을 사용합니다:
 5. vectorstore 재생성
 6. chunk_map 재구축
 
-이 방식은 FAISS의 제약으로 인해 필요하며, 삭제 후 반드시 `save()`를 호출해야 합니다.
+**주의:** 이 방식은 FAISS의 제약으로 인해 필요하며, 삭제 후 반드시 `save()`를 호출해야 합니다.
 
 ---
 

@@ -11,6 +11,51 @@ LLM 관련 클래스들은 문서 검색 및 응답 생성을 담당합니다.
 - **경로**: `src/llm/retrieval.py`
 - **목적**: 쿼리에 대한 유사 청크 검색
 
+### 검색 플로우
+
+#### search() - 청크 기반 검색
+
+```mermaid
+graph TB
+    A[사용자 질의] --> B[쿼리 임베딩 생성]
+    B --> C[VectorStoreManager.search]
+    C --> D[(FAISS 인덱스)]
+    D --> E[유사도 검색<br/>L2 거리 계산]
+    E --> F[top_k개 청크 반환]
+    F --> G{메타데이터 필터?}
+    G -->|예| H[필터링 적용]
+    G -->|아니오| I[결과 변환]
+    H --> I
+    I --> J[청크 리스트 반환]
+
+    style A stroke-width:2px,stroke:#e1f5ff
+    style D stroke-width:2px,stroke:#fff4e1
+    style J stroke-width:2px,stroke:#e8f5e9
+```
+
+#### search_page() - 페이지 기반 검색
+
+```mermaid
+graph TB
+    A[사용자 질의] --> B[search 호출]
+    B --> C[초기 청크 검색]
+    C --> D{검색 결과?}
+    D -->|없음| E[빈 결과 반환]
+    D -->|있음| F[페이지 범위 확장<br/>±page_window]
+    F --> G[확장된 청크 조회<br/>get_by_metadata]
+    G --> H[페이지별 청크 병합]
+    H --> I[페이지 점수 계산]
+    I --> J{sort_by?}
+    J -->|score| K[점수 기준 정렬]
+    J -->|page| L[페이지 번호 정렬]
+    K --> M[best_page 선정]
+    L --> M
+    M --> N[페이지 검색 결과 반환]
+
+    style A stroke-width:2px,stroke:#e1f5ff
+    style N stroke-width:2px,stroke:#e8f5e9
+```
+
 ### 클래스: Retrieval
 
 #### 생성자
@@ -150,6 +195,32 @@ result = retrieval.search_page("입찰 요건", sort_by="page")
 ### 파일 정보
 - **경로**: `src/llm/llm_processor.py`
 - **목적**: LLM을 활용한 응답 생성
+
+### 응답 생성 플로우
+
+```mermaid
+graph TB
+    A[사용자 질문] --> B[검색된 청크/페이지]
+    B --> C{검색 결과 타입}
+    C -->|search 결과| D[_build_context_from_chunks]
+    C -->|search_page 결과| E[_build_context_from_pages]
+    D --> F[컨텍스트 생성]
+    E --> F
+    F --> G[프롬프트 템플릿 적용<br/>RAG_PROMPT_TEMPLATE]
+    A --> G
+    G --> H[모델별 파라미터 설정]
+    H --> I{모델 타입}
+    I -->|GPT-5/4.1/O1| J[max_completion_tokens 사용]
+    I -->|기타| K[temperature + max_tokens 사용]
+    J --> L[OpenAI API 호출]
+    K --> L
+    L --> M[ChatCompletion 응답]
+    M --> N[답변 반환]
+
+    style A stroke-width:2px,stroke:#e1f5ff
+    style B stroke-width:2px,stroke:#fff4e1
+    style N stroke-width:2px,stroke:#e8f5e9
+```
 
 ### 클래스: LLMProcessor
 
