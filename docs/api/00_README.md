@@ -90,15 +90,15 @@ codeit_ai_g2b_search/
 
 | 문서 | 내용 | 주요 클래스 |
 |------|------|-------------|
-| [01_config_interface.md](01_config_interface.md) | 설정 관리 | Config |
-| [02_database_interface.md](02_database_interface.md) | 데이터베이스 관리 | ChatHistoryDB, DocumentsDB |
-| [03_processor_interface.md](03_processor_interface.md) | 문서 처리 및 임베딩 | DocumentProcessor, EmbeddingProcessor |
-| [04_vectorstore_interface.md](04_vectorstore_interface.md) | 벡터 인덱스 관리 | VectorStoreManager |
-| [05_llm_interface.md](05_llm_interface.md) | 검색 및 응답 생성 | Retrieval, LLMProcessor |
+| [01_config_interface.md](/codeit_ai_g2b_search/api/01_config_interface) | 설정 관리 | Config |
+| [02_database_interface.md](/codeit_ai_g2b_search/api/02_database_interface) | 데이터베이스 관리 | ChatHistoryDB, DocumentsDB |
+| [03_processor_interface.md](/codeit_ai_g2b_search/api/03_processor_interface) | 문서 처리 및 임베딩 | DocumentProcessor, EmbeddingProcessor |
+| [04_vectorstore_interface.md](/codeit_ai_g2b_search/api/04_vectorstore_interface) | 벡터 인덱스 관리 | VectorStoreManager |
+| [05_llm_interface.md](/codeit_ai_g2b_search/api/05_llm_interface) | 검색 및 응답 생성 | Retrieval, LLMProcessor |
 
 ## 주요 클래스
 
-### 1. Config ([문서](01_config_interface.md))
+### 1. Config ([문서](/codeit_ai_g2b_search/api/01_config_interface))
 **역할**: 중앙 집중식 설정 관리
 **주요 기능**:
 - config.json 파일에서 설정 로드
@@ -115,7 +115,7 @@ print(config.CHUNK_SIZE)  # 1500
 
 ---
 
-### 2. DocumentProcessor ([문서](03_processor_interface.md))
+### 2. DocumentProcessor ([문서](/codeit_ai_g2b_search/api/03_processor_interface))
 **역할**: PDF 파일을 Markdown으로 변환
 **주요 기능**:
 - PDF → Markdown 변환 (PyMuPDF 사용)
@@ -133,7 +133,7 @@ file_hash = processor.process_pdf("example.pdf")
 
 ---
 
-### 3. DocumentsDB ([문서](02_database_interface.md))
+### 3. DocumentsDB ([문서](/codeit_ai_g2b_search/api/02_database_interface))
 **역할**: 문서 메타데이터 관리
 **주요 기능**:
 - 문서 정보 저장 (file_hash, file_name, text_content)
@@ -151,7 +151,7 @@ print(doc['file_name'])
 
 ---
 
-### 4. EmbeddingProcessor ([문서](03_processor_interface.md))
+### 4. EmbeddingProcessor ([문서](/codeit_ai_g2b_search/api/03_processor_interface))
 **역할**: 문서 청킹 및 임베딩 생성
 **주요 기능**:
 - 마크다운 텍스트 전처리
@@ -169,7 +169,7 @@ success = processor.process_document("abc123...", api_key="sk-...")
 
 ---
 
-### 5. VectorStoreManager ([문서](04_vectorstore_interface.md))
+### 5. VectorStoreManager ([문서](/codeit_ai_g2b_search/api/04_vectorstore_interface))
 **역할**: FAISS 벡터 인덱스 관리
 **주요 기능**:
 - FAISS 인덱스 생성/로드/저장
@@ -188,7 +188,7 @@ results = vm.search("입찰 요건", top_k=5)
 
 ---
 
-### 6. Retrieval ([문서](05_llm_interface.md))
+### 6. Retrieval ([문서](/codeit_ai_g2b_search/api/05_llm_interface))
 **역할**: 쿼리에 대한 유사 문서 검색
 **주요 기능**:
 - 청크 기반 검색 (search)
@@ -205,7 +205,7 @@ chunks = retrieval.search("입찰 요건", top_k=5)
 
 ---
 
-### 7. LLMProcessor ([문서](05_llm_interface.md))
+### 7. LLMProcessor ([문서](/codeit_ai_g2b_search/api/05_llm_interface))
 **역할**: LLM을 활용한 응답 생성
 **주요 기능**:
 - 검색 결과를 컨텍스트로 변환
@@ -223,7 +223,7 @@ print(response.choices[0].message.content)
 
 ---
 
-### 8. ChatHistoryDB ([문서](02_database_interface.md))
+### 8. ChatHistoryDB ([문서](/codeit_ai_g2b_search/api/02_database_interface))
 **역할**: 채팅 세션 및 메시지 관리
 **주요 기능**:
 - 채팅 세션 생성 및 관리
@@ -486,11 +486,11 @@ data/markers/
 
 각 클래스의 상세한 인터페이스는 다음 문서를 참조하세요:
 
-1. [Config 인터페이스 문서](01_config_interface.md)
-2. [Database 인터페이스 문서](02_database_interface.md)
-3. [Processor 인터페이스 문서](03_processor_interface.md)
-4. [VectorStore 인터페이스 문서](04_vectorstore_interface.md)
-5. [LLM 인터페이스 문서](05_llm_interface.md)
+1. [Config 인터페이스 문서](/codeit_ai_g2b_search/api/01_config_interface)
+2. [Database 인터페이스 문서](/codeit_ai_g2b_search/api/02_database_interface)
+3. [Processor 인터페이스 문서](/codeit_ai_g2b_search/api/03_processor_interface)
+4. [VectorStore 인터페이스 문서](04_vectorstore_interface)
+5. [LLM 인터페이스 문서](/codeit_ai_g2b_search/api/05_llm_interface)
 
 ---
 
