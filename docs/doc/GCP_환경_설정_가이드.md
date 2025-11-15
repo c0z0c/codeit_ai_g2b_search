@@ -1,29 +1,282 @@
 ---
 layout: default
-title: "JupyterHub 설치 가이드 - 따라하기"
-description: "Google Cloud VM Ubuntu에서 JupyterHub 빠른 설치"
-date: 2025-11-10
+title: "GCP 환경 설정 가이드"
+description: "Google Cloud VM Ubuntu 환경 설정 및 JupyterHub 설치"
+date: 2025-11-15
 author: "김명환"
 ---
 
-# JupyterHub 설치 가이드 - 따라하기
+# GCP 환경 설정 가이드
 
-## 목차
+> Google Cloud VM에서 VSFTPD를 통한 파일 전송 환경과 JupyterHub 개발 환경을 구축하는 완벽 가이드
 
-1. [환경 준비](#1-환경-준비)
-2. [Miniconda 설치](#2-miniconda-설치)
-3. [JupyterHub 설치](#3-jupyterhub-설치)
-4. [설정 파일 작성](#4-설정-파일-작성)
-5. [사용자 계정 생성](#5-사용자-계정-생성)
-6. [Configurable HTTP Proxy 설치](#6-configurable-http-proxy-설치)
-7. [시스템 서비스 등록](#7-시스템-서비스-등록)
-8. [방화벽 설정](#8-방화벽-설정)
-9. [접속 및 테스트](#9-접속-및-테스트)
-10. [관리 명령어](#10-관리-명령어)
+## 빠른 시작 요약
+
+### FTP 환경 구축 (3단계)
+1. **VM에서**: `sudo apt install vsftpd -y` → `/etc/vsftpd.conf` 설정
+2. **로컬 PC에서**: GCP 방화벽 규칙 생성 (`gcloud compute firewall-rules create allow-ftp ...`)
+3. **Windows에서**: IPDisk로 Z 드라이브 연결
+
+### 주요 명령어 치트시트
+```bash
+# 503 퍼미션 오류 해결
+chmod u+w /home/계정명 && sudo systemctl restart vsftpd
+
+# 방화벽 규칙 생성 (Windows PowerShell)
+gcloud compute firewall-rules create allow-ftp --description="Allow FTP Control (21) and Passive Data Ports (30000-30009)" --direction=INGRESS --priority=1000 --network=default --action=ALLOW --rules="tcp:21,tcp:30000-30009" --source-ranges=0.0.0.0/0 --target-tags=ftp-server --project=sprint-ai-chunk2-03
+
+# VM 태그 추가 (Windows PowerShell)
+gcloud compute instances add-tags codeit-ai-g2b-search --tags=ftp-server --zone=us-central1-c --project=sprint-ai-chunk2-03
+```
 
 ---
 
-## 1. 환경 준비
+## 목차
+
+### Part 1: 파일 전송 환경 구축
+1. [VSFTPD 설치 및 설정](#1-vsftpd-설치-및-설정)
+2. [GCP 방화벽 설정](#2-gcp-방화벽-설정)
+3. [Windows PC에서 FTP 연결](#3-windows-pc에서-ftp-연결)
+
+### Part 2: JupyterHub 설치
+4. [환경 준비](#4-환경-준비)
+5. [Miniconda 설치](#5-miniconda-설치)
+6. [JupyterHub 설치](#6-jupyterhub-설치)
+7. [설정 파일 작성](#7-설정-파일-작성)
+8. [사용자 계정 생성](#8-사용자-계정-생성)
+9. [Configurable HTTP Proxy 설치](#9-configurable-http-proxy-설치)
+10. [시스템 서비스 등록](#10-시스템-서비스-등록)
+11. [JupyterHub 방화벽 설정](#11-jupyterhub-방화벽-설정)
+12. [접속 및 테스트](#12-접속-및-테스트)
+13. [관리 명령어](#13-관리-명령어)
+
+---
+
+# Part 1: 파일 전송 환경 구축
+
+## 1. VSFTPD 설치 및 설정
+
+### VSFTPD 설치
+
+```bash
+# GCP VM에 접속
+gcloud compute ssh spai0433@codeit-ai-g2b-search --project=sprint-ai-chunk2-03 --zone=us-central1-c
+
+# 패키지 업데이트
+sudo apt update
+
+# VSFTPD 설치
+sudo apt install vsftpd -y
+
+# 설치 확인
+vsftpd -v
+```
+
+### VSFTPD 설정 파일 편집
+
+```bash
+# 기존 설정 파일 백업
+sudo cp /etc/vsftpd.conf /etc/vsftpd.conf.backup
+
+# 설정 파일 편집
+sudo vi /etc/vsftpd.conf
+```
+
+**다음 내용으로 수정 또는 추가:**
+
+```ini
+# 로컬 사용자 로그인 허용
+local_enable=YES
+
+# 파일 쓰기(업로드) 허용 설정 (치명적 오류 해결)
+write_enable=YES
+
+# 로컬 사용자를 홈 디렉토리에 격리
+chroot_local_user=YES
+
+# Ubuntu 20.04/VSFTPD 3.x에서 필수 (쓰기 가능한 chroot 허용)
+allow_writeable_chroot=YES
+
+# Passive 모드(Passive Mode) 포트 범위 설정
+pasv_min_port=30000
+pasv_max_port=30009
+
+# VM의 실제 외부 IP 주소로 변경 (중요!)
+# 🚨 VM의 실제 외부 IP 주소로 정확히 설정해야 합니다.
+pasv_address=34.9.92.3
+
+# 익명 사용자 비활성화 (보안)
+anonymous_enable=NO
+
+# 로컬 사용자 기본 umask
+local_umask=022
+
+# 로그 활성화
+xferlog_enable=YES
+xferlog_file=/var/log/vsftpd.log
+```
+
+**저장:** `ESC` → `:wq` → `Enter`
+
+**주의사항:**
+- `pasv_address`는 반드시 VM의 실제 외부 IP로 변경하세요
+- 외부 IP는 GCP 콘솔에서 확인하거나 다음 명령어로 확인:
+  ```bash
+  gcloud compute instances describe codeit-ai-g2b-search \
+    --zone=us-central1-c \
+    --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
+  ```
+
+### VSFTPD 서비스 재시작
+
+```bash
+# 서비스 재시작
+sudo systemctl restart vsftpd
+
+# 서비스 상태 확인
+sudo systemctl status vsftpd
+
+# 부팅 시 자동 시작 설정
+sudo systemctl enable vsftpd
+```
+
+### 포트 확인
+
+```bash
+# FTP 포트 리스닝 확인
+sudo netstat -tulpn | grep vsftpd
+
+# 출력 예시:
+# tcp   0   0 0.0.0.0:21   0.0.0.0:*   LISTEN   [PID]/vsftpd
+```
+
+---
+
+## 2. GCP 방화벽 설정
+
+### 방화벽 규칙 생성
+
+**주의**: 아래 명령어를 로컬 PC의 PowerShell 또는 Git Bash에서 실행하세요 (VM 내부가 아님)
+
+```bash
+# FTP Control(21) 및 Passive Data Ports(30000-30009) 허용
+gcloud compute firewall-rules create allow-ftp \
+  --description="Allow FTP Control (21) and Passive Data Ports (30000-30009)" \
+  --direction=INGRESS \
+  --priority=1000 \
+  --network=default \
+  --action=ALLOW \
+  --rules="tcp:21,tcp:30000-30009" \
+  --source-ranges=0.0.0.0/0 \
+  --target-tags=ftp-server \
+  --project=sprint-ai-chunk2-03
+```
+
+**Windows에서 한 줄로 실행 (PowerShell):**
+```powershell
+gcloud compute firewall-rules create allow-ftp --description="Allow FTP Control (21) and Passive Data Ports (30000-30009)" --direction=INGRESS --priority=1000 --network=default --action=ALLOW --rules="tcp:21,tcp:30000-30009" --source-ranges=0.0.0.0/0 --target-tags=ftp-server --project=sprint-ai-chunk2-03
+```
+
+### VM에 네트워크 태그 추가
+
+```bash
+# ftp-server 태그 추가
+gcloud compute instances add-tags codeit-ai-g2b-search \
+  --tags=ftp-server \
+  --zone=us-central1-c \
+  --project=sprint-ai-chunk2-03
+```
+
+**Windows에서 한 줄로 실행 (PowerShell):**
+```powershell
+gcloud compute instances add-tags codeit-ai-g2b-search --tags=ftp-server --zone=us-central1-c --project=sprint-ai-chunk2-03
+```
+
+### 방화벽 규칙 확인
+
+```bash
+# 방화벽 규칙 상세 정보 확인
+gcloud compute firewall-rules describe allow-ftp \
+  --project=sprint-ai-chunk2-03
+
+# 모든 방화벽 규칙 목록 확인
+gcloud compute firewall-rules list --project=sprint-ai-chunk2-03
+
+# VM 태그 확인
+gcloud compute instances describe codeit-ai-g2b-search \
+  --zone=us-central1-c \
+  --format="get(tags.items)"
+```
+
+---
+
+## 3. Windows PC에서 FTP 연결
+
+### 포트 연결 테스트 (PowerShell)
+
+```powershell
+# FTP Control 포트(21) 테스트
+Test-NetConnection -ComputerName 34.9.92.3 -Port 21
+
+# Passive 데이터 포트 테스트
+Test-NetConnection -ComputerName 34.9.92.3 -Port 30000
+```
+
+**정상 출력 예시:**
+```
+ComputerName     : 34.9.92.3
+RemoteAddress    : 34.9.92.3
+RemotePort       : 21
+TcpTestSucceeded : True
+```
+
+### IPDisk를 통한 Z 드라이브 연결
+
+#### IPDisk 다운로드 및 설치
+1. IPDisk 프로그램 다운로드: [IPDisk 공식 사이트](http://www.ipdisk.co.kr)
+2. 설치 파일 실행 및 설치 진행
+
+#### FTP 연결 설정
+1. **IPDisk 실행**
+2. **파일 > 새 연결** 클릭
+3. **연결 정보 입력:**
+   - **프로토콜**: FTP
+   - **서버 주소**: `34.9.92.3` (VM 외부 IP)
+   - **포트**: `21`
+   - **사용자 이름**: `spai0433` (본인의 리눅스 계정)
+   - **비밀번호**: 리눅스 계정 비밀번호
+   - **드라이브 문자**: `Z:`
+4. **연결** 클릭
+
+#### 연결 확인
+- Windows 탐색기에서 `Z:` 드라이브 확인
+- VM의 홈 디렉토리(`/home/spai0433`) 내용이 표시됨
+
+#### 자동 연결 설정 (선택)
+1. IPDisk 설정에서 **시작 시 자동 연결** 옵션 활성화
+2. Windows 부팅 시 자동으로 Z 드라이브 연결됨
+
+### Windows 네트워크 드라이브 연결 (대안)
+
+IPDisk 대신 Windows 기본 기능 사용:
+
+```
+1. 파일 탐색기 열기
+2. '내 PC' 우클릭 > '네트워크 드라이브 연결'
+3. 드라이브 문자: Z
+4. 폴더: ftp://34.9.92.3
+5. '다른 자격 증명을 사용하여 연결' 체크
+6. '마침' 클릭
+7. 사용자 이름과 비밀번호 입력
+```
+
+---
+
+# Part 2: JupyterHub 설치
+
+---
+
+## 4. 환경 준비
 
 ### GCP VM 접속
 
@@ -45,7 +298,7 @@ sudo apt install -y git wget curl vim
 
 ---
 
-## 2. Miniconda 설치
+## 5. Miniconda 설치
 
 ### 다운로드 및 설치
 
@@ -70,7 +323,7 @@ conda --version
 
 ---
 
-## 3. JupyterHub 설치
+## 6. JupyterHub 설치
 
 ### 가상 환경 생성 및 패키지 설치
 
@@ -89,7 +342,7 @@ sudo /opt/miniconda3/bin/conda run -n jhub-env jupyter lab --version
 
 ---
 
-## 4. 설정 파일 작성
+## 7. 설정 파일 작성
 
 ### 설정 디렉토리 및 파일 생성
 
@@ -145,7 +398,7 @@ c.Spawner.cmd = ['/opt/miniconda3/envs/jhub-env/bin/jupyterhub-singleuser']
 
 ---
 
-## 5. 사용자 계정 생성
+## 8. 사용자 계정 생성
 
 ### 시스템 사용자 추가
 
@@ -174,7 +427,7 @@ cat /etc/passwd | grep spai
 
 ---
 
-## 6. Configurable HTTP Proxy 설치
+## 9. Configurable HTTP Proxy 설치
 
 ### Node.js 및 Proxy 설치
 
@@ -191,7 +444,7 @@ configurable-http-proxy --version
 
 ---
 
-## 7. 시스템 서비스 등록
+## 10. 시스템 서비스 등록
 
 ### systemd 서비스 파일 생성
 
@@ -245,7 +498,7 @@ sudo systemctl status jupyterhub.service
 
 ---
 
-## 8. 방화벽 설정
+## 11. JupyterHub 방화벽 설정
 
 ### GCP 방화벽 규칙 생성
 
@@ -279,7 +532,7 @@ sudo netstat -tulpn | grep 8000
 
 ---
 
-## 9. 접속 및 테스트
+## 12. 접속 및 테스트
 
 ### 웹 브라우저 접속
 
@@ -314,7 +567,7 @@ print(f"Home: {os.getenv('HOME')}")
 
 ---
 
-## 10. 관리 명령어
+## 13. 관리 명령어
 
 ### 서비스 관리
 
@@ -373,6 +626,103 @@ sudo systemctl restart jupyterhub.service
 
 ## 문제 해결
 
+### FTP 연결 문제
+
+#### 1. FTP 연결이 안 될 때
+
+```bash
+# VSFTPD 서비스 상태 확인
+sudo systemctl status vsftpd
+
+# 서비스 재시작
+sudo systemctl restart vsftpd
+
+# FTP 포트 리스닝 확인
+sudo netstat -tulpn | grep 21
+```
+
+#### 2. Passive 모드 연결 실패
+
+**증상**: 디렉토리 목록을 가져올 수 없음
+
+**원인**:
+- `pasv_address`가 VM 외부 IP와 다름
+- 방화벽에서 Passive 포트(30000-30009)가 차단됨
+
+**해결**:
+```bash
+# VM 외부 IP 확인
+gcloud compute instances describe codeit-ai-g2b-search \
+  --zone=us-central1-c \
+  --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
+
+# /etc/vsftpd.conf 수정
+sudo vi /etc/vsftpd.conf
+# pasv_address를 외부 IP로 변경
+
+# 서비스 재시작
+sudo systemctl restart vsftpd
+
+# 방화벽 규칙 확인
+gcloud compute firewall-rules describe allow-ftp --project=sprint-ai-chunk2-03
+```
+
+#### 3. 쓰기 권한 오류 (503 Permission denied)
+
+**증상**: FTP 업로드 시 "553 Could not create file" 또는 "503 Permission denied" 오류
+
+**원인**:
+- `write_enable=YES` 설정이 없거나 주석 처리됨
+- 사용자 홈 디렉토리에 쓰기 권한이 없음
+
+**해결**:
+```bash
+# 1. VSFTPD 설정 확인
+grep write_enable /etc/vsftpd.conf
+# write_enable=YES 여야 함
+
+# 2. 사용자 홈 디렉토리 권한 확인
+ls -la /home/spai0433
+
+# 3. 홈 디렉토리에 쓰기 권한 추가 (503 오류 해결)
+chmod u+w /home/spai0433
+
+# 또는 더 명확하게 권한 설정
+sudo chmod 755 /home/spai0433
+
+# 4. 특정 디렉토리에만 쓰기 권한 필요 시
+chmod u+w /home/spai0433/upload_folder
+
+# 5. 서비스 재시작
+sudo systemctl restart vsftpd
+```
+
+#### 4. chroot 오류
+
+**증상**: 로그인 후 500 OOPS 오류
+
+**해결**:
+```bash
+# /etc/vsftpd.conf에 다음 옵션 추가
+sudo vi /etc/vsftpd.conf
+# allow_writeable_chroot=YES
+
+# 서비스 재시작
+sudo systemctl restart vsftpd
+```
+
+#### 5. VSFTPD 로그 확인
+
+```bash
+# VSFTPD 로그 확인
+sudo tail -f /var/log/vsftpd.log
+
+# 시스템 로그에서 VSFTPD 관련 확인
+sudo journalctl -u vsftpd -f
+```
+
+### JupyterHub 문제 해결
+
 ### 포트 8000 사용 중 오류
 
 ```bash
@@ -422,14 +772,38 @@ gcloud compute instances describe codeit-ai-g2b-search \
 
 | 항목 | 경로 |
 |------|------|
+| **FTP 관련** | |
+| VSFTPD 설정 파일 | `/etc/vsftpd.conf` |
+| VSFTPD 로그 | `/var/log/vsftpd.log` |
+| 사용자 홈 디렉토리 | `/home/[사용자명]` |
+| **JupyterHub 관련** | |
 | Miniconda 설치 경로 | `/opt/miniconda3` |
 | JupyterHub 환경 | `/opt/miniconda3/envs/jhub-env` |
-| 설정 파일 | `/etc/jupyterhub/jupyterhub_config.py` |
-| 서비스 파일 | `/etc/systemd/system/jupyterhub.service` |
-| 사용자 홈 | `/home/[사용자명]` |
+| JupyterHub 설정 파일 | `/etc/jupyterhub/jupyterhub_config.py` |
+| JupyterHub 서비스 파일 | `/etc/systemd/system/jupyterhub.service` |
 
 ### 주요 명령어
 
+#### FTP 관련
+```bash
+# VSFTPD 서비스 상태
+sudo systemctl status vsftpd
+
+# VSFTPD 재시작
+sudo systemctl restart vsftpd
+
+# FTP 로그 확인
+sudo tail -f /var/log/vsftpd.log
+
+# 포트 확인
+sudo netstat -tulpn | grep 21
+
+# FTP 503 퍼미션 오류 해결
+chmod u+w /home/계정명
+sudo systemctl restart vsftpd
+```
+
+#### JupyterHub 관련
 ```bash
 # 서비스 상태
 sudo systemctl status jupyterhub.service
@@ -445,10 +819,36 @@ sudo /opt/miniconda3/envs/jhub-env/bin/jupyterhub \
   -f /etc/jupyterhub/jupyterhub_config.py
 ```
 
+#### GCP 관련
+```bash
+# VM 외부 IP 확인
+gcloud compute instances describe codeit-ai-g2b-search \
+  --zone=us-central1-c \
+  --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
+
+# 방화벽 규칙 확인
+gcloud compute firewall-rules list --project=sprint-ai-chunk2-03
+
+# VM 태그 확인
+gcloud compute instances describe codeit-ai-g2b-search \
+  --zone=us-central1-c \
+  --format="get(tags.items)"
+```
+
 ---
 
 ## 설치 체크리스트
 
+### Part 1: FTP 환경 구축
+- [ ] VSFTPD 설치 완료
+- [ ] VSFTPD 설정 파일 수정 완료 (`pasv_address` IP 확인)
+- [ ] VSFTPD 서비스 시작 및 활성화 완료
+- [ ] GCP FTP 방화벽 규칙 생성 완료
+- [ ] VM에 ftp-server 태그 추가 완료
+- [ ] Windows에서 FTP 포트 연결 테스트 완료
+- [ ] IPDisk Z 드라이브 연결 확인
+
+### Part 2: JupyterHub 설치
 - [ ] 시스템 업데이트 완료
 - [ ] Miniconda 설치 완료
 - [ ] jhub-env 환경 생성 완료
@@ -457,13 +857,29 @@ sudo /opt/miniconda3/envs/jhub-env/bin/jupyterhub \
 - [ ] 사용자 계정 생성 완료
 - [ ] Configurable HTTP Proxy 설치 완료
 - [ ] systemd 서비스 등록 완료
-- [ ] GCP 방화벽 규칙 생성 완료
-- [ ] VM 네트워크 태그 설정 완료
+- [ ] GCP JupyterHub 방화벽 규칙 생성 완료
+- [ ] VM에 jupyterhub-server 태그 추가 완료
 - [ ] 웹 브라우저 접속 확인
 - [ ] 로그인 및 노트북 실행 확인
 
 ---
 
-**문서 버전**: 1.0  
-**최종 수정일**: 2025-11-10  
+## 주요 접속 정보
+
+| 서비스 | 접속 주소 | 포트 | 용도 |
+|--------|----------|------|------|
+| FTP | `ftp://34.9.92.3` | 21, 30000-30009 | 파일 전송 |
+| JupyterHub | `http://34.9.92.3:8000` | 8000 | 웹 기반 노트북 |
+| SSH | `gcloud compute ssh ...` | 22 | VM 관리 |
+
+**주의**: IP 주소는 본인의 VM 외부 IP로 변경하세요.
+
+---
+
+**문서 버전**: 2.0
+**최종 수정일**: 2025-11-15
 **작성자**: 김명환
+
+**변경 이력**:
+- v2.0 (2025-11-15): VSFTPD 설정, GCP 방화벽, Windows FTP 연결 내용 추가
+- v1.0 (2025-11-10): JupyterHub 설치 가이드 초안 작성
