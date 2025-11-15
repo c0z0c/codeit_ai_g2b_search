@@ -122,9 +122,7 @@ xferlog_file=/var/log/vsftpd.log
 - `pasv_address`는 반드시 VM의 실제 외부 IP로 변경하세요
 - 외부 IP는 GCP 콘솔에서 확인하거나 다음 명령어로 확인:
   ```bash
-  gcloud compute instances describe codeit-ai-g2b-search \
-    --zone=us-central1-c \
-    --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
+  gcloud compute instances describe codeit-ai-g2b-search --zone=us-central1-c --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
   ```
 
 ### VSFTPD 서비스 재시작
@@ -156,38 +154,22 @@ sudo netstat -tulpn | grep vsftpd
 
 ### 방화벽 규칙 생성
 
-**주의**: 아래 명령어를 로컬 PC의 PowerShell 또는 Git Bash에서 실행하세요 (VM 내부가 아님)
+**주의**: 아래 명령어를 로컬 PC의 PowerShell 또는 CMD에서 실행하세요 (VM 내부가 아님)
 
-```bash
-# FTP Control(21) 및 Passive Data Ports(30000-30009) 허용
-gcloud compute firewall-rules create allow-ftp \
-  --description="Allow FTP Control (21) and Passive Data Ports (30000-30009)" \
-  --direction=INGRESS \
-  --priority=1000 \
-  --network=default \
-  --action=ALLOW \
-  --rules="tcp:21,tcp:30000-30009" \
-  --source-ranges=0.0.0.0/0 \
-  --target-tags=ftp-server \
-  --project=sprint-ai-chunk2-03
-```
-
-**Windows에서 한 줄로 실행 (PowerShell):**
+**Windows PowerShell/CMD 한 줄 명령어:**
 ```powershell
 gcloud compute firewall-rules create allow-ftp --description="Allow FTP Control (21) and Passive Data Ports (30000-30009)" --direction=INGRESS --priority=1000 --network=default --action=ALLOW --rules="tcp:21,tcp:30000-30009" --source-ranges=0.0.0.0/0 --target-tags=ftp-server --project=sprint-ai-chunk2-03
 ```
 
-### VM에 네트워크 태그 추가
-
-```bash
-# ftp-server 태그 추가
-gcloud compute instances add-tags codeit-ai-g2b-search \
-  --tags=ftp-server \
-  --zone=us-central1-c \
-  --project=sprint-ai-chunk2-03
+**테스트 명령어 (PowerShell):**
+```powershell
+Test-NetConnection -ComputerName 34.9.92.3 -Port 21
+Test-NetConnection -ComputerName 34.9.92.3 -Port 30000
 ```
 
-**Windows에서 한 줄로 실행 (PowerShell):**
+### VM에 네트워크 태그 추가
+
+**Windows PowerShell/CMD 한 줄 명령어:**
 ```powershell
 gcloud compute instances add-tags codeit-ai-g2b-search --tags=ftp-server --zone=us-central1-c --project=sprint-ai-chunk2-03
 ```
@@ -196,16 +178,13 @@ gcloud compute instances add-tags codeit-ai-g2b-search --tags=ftp-server --zone=
 
 ```bash
 # 방화벽 규칙 상세 정보 확인
-gcloud compute firewall-rules describe allow-ftp \
-  --project=sprint-ai-chunk2-03
+gcloud compute firewall-rules describe allow-ftp --project=sprint-ai-chunk2-03
 
 # 모든 방화벽 규칙 목록 확인
 gcloud compute firewall-rules list --project=sprint-ai-chunk2-03
 
 # VM 태그 확인
-gcloud compute instances describe codeit-ai-g2b-search \
-  --zone=us-central1-c \
-  --format="get(tags.items)"
+gcloud compute instances describe codeit-ai-g2b-search --zone=us-central1-c --format="get(tags.items)"
 ```
 
 ---
@@ -332,8 +311,7 @@ conda --version
 sudo /opt/miniconda3/bin/conda create -n jhub-env python=3.10 -y
 
 # JupyterHub, JupyterLab, Notebook 설치
-sudo /opt/miniconda3/bin/conda run -n jhub-env \
-  pip install jupyterhub jupyterlab notebook
+sudo /opt/miniconda3/bin/conda run -n jhub-env pip install jupyterhub jupyterlab notebook
 
 # 버전 확인
 sudo /opt/miniconda3/bin/conda run -n jhub-env jupyterhub --version
@@ -351,13 +329,10 @@ sudo /opt/miniconda3/bin/conda run -n jhub-env jupyter lab --version
 sudo mkdir -p /etc/jupyterhub
 
 # 설정 파일 생성
-sudo /opt/miniconda3/envs/jhub-env/bin/jupyterhub \
-  --generate-config \
-  -f /etc/jupyterhub/jupyterhub_config.py
+sudo /opt/miniconda3/envs/jhub-env/bin/jupyterhub --generate-config -f /etc/jupyterhub/jupyterhub_config.py
 
 # 백업 생성
-sudo cp /etc/jupyterhub/jupyterhub_config.py \
-       /etc/jupyterhub/jupyterhub_config.py.org
+sudo cp /etc/jupyterhub/jupyterhub_config.py /etc/jupyterhub/jupyterhub_config.py.org
 ```
 
 ### 설정 파일 편집
@@ -502,22 +477,18 @@ sudo systemctl status jupyterhub.service
 
 ### GCP 방화벽 규칙 생성
 
-```bash
+**Windows PowerShell/CMD 한 줄 명령어:**
+```powershell
 # 방화벽 규칙 생성 (8000 포트 개방)
-gcloud compute firewall-rules create allow-jupyterhub \
-  --description="Allow JupyterHub on port 8000" \
-  --direction=INGRESS \
-  --priority=1000 \
-  --network=default \
-  --action=ALLOW \
-  --rules=tcp:8000 \
-  --source-ranges=0.0.0.0/0 \
-  --target-tags=jupyterhub-server
+gcloud compute firewall-rules create allow-jupyterhub --description="Allow JupyterHub on port 8000" --direction=INGRESS --priority=1000 --network=default --action=ALLOW --rules=tcp:8000 --source-ranges=0.0.0.0/0 --target-tags=jupyterhub-server --project=sprint-ai-chunk2-03
 
 # VM에 네트워크 태그 추가
-gcloud compute instances add-tags codeit-ai-g2b-search \
-  --tags=jupyterhub-server \
-  --zone=us-central1-c
+gcloud compute instances add-tags codeit-ai-g2b-search --tags=jupyterhub-server --zone=us-central1-c --project=sprint-ai-chunk2-03
+```
+
+**테스트 명령어 (PowerShell):**
+```powershell
+Test-NetConnection -ComputerName 34.9.92.3 -Port 8000
 ```
 
 ### 포트 개방 확인
@@ -652,9 +623,7 @@ sudo netstat -tulpn | grep 21
 **해결**:
 ```bash
 # VM 외부 IP 확인
-gcloud compute instances describe codeit-ai-g2b-search \
-  --zone=us-central1-c \
-  --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
+gcloud compute instances describe codeit-ai-g2b-search --zone=us-central1-c --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
 
 # /etc/vsftpd.conf 수정
 sudo vi /etc/vsftpd.conf
@@ -743,8 +712,7 @@ sudo systemctl restart jupyterhub.service
 sudo journalctl -u jupyterhub.service -xe
 
 # 수동 실행으로 오류 확인
-sudo /opt/miniconda3/envs/jhub-env/bin/jupyterhub \
-  -f /etc/jupyterhub/jupyterhub_config.py
+sudo /opt/miniconda3/envs/jhub-env/bin/jupyterhub -f /etc/jupyterhub/jupyterhub_config.py
 ```
 
 ### 접속 불가
@@ -760,8 +728,7 @@ sudo netstat -tulpn | grep 8000
 gcloud compute firewall-rules list | grep jupyterhub
 
 # 4. VM 태그 확인
-gcloud compute instances describe codeit-ai-g2b-search \
-  --zone=us-central1-c --format="get(tags.items)"
+gcloud compute instances describe codeit-ai-g2b-search --zone=us-central1-c --format="get(tags.items)"
 ```
 
 ---
@@ -815,24 +782,19 @@ sudo journalctl -u jupyterhub.service -f
 sudo systemctl restart jupyterhub.service
 
 # 설정 테스트
-sudo /opt/miniconda3/envs/jhub-env/bin/jupyterhub \
-  -f /etc/jupyterhub/jupyterhub_config.py
+sudo /opt/miniconda3/envs/jhub-env/bin/jupyterhub -f /etc/jupyterhub/jupyterhub_config.py
 ```
 
 #### GCP 관련
 ```bash
 # VM 외부 IP 확인
-gcloud compute instances describe codeit-ai-g2b-search \
-  --zone=us-central1-c \
-  --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
+gcloud compute instances describe codeit-ai-g2b-search --zone=us-central1-c --format="get(networkInterfaces[0].accessConfigs[0].natIP)"
 
 # 방화벽 규칙 확인
 gcloud compute firewall-rules list --project=sprint-ai-chunk2-03
 
 # VM 태그 확인
-gcloud compute instances describe codeit-ai-g2b-search \
-  --zone=us-central1-c \
-  --format="get(tags.items)"
+gcloud compute instances describe codeit-ai-g2b-search --zone=us-central1-c --format="get(tags.items)"
 ```
 
 ---
