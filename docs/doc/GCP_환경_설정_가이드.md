@@ -17,6 +17,11 @@ author: "김명환"
 2. **로컬 PC에서**: GCP 방화벽 규칙 생성 (`gcloud compute firewall-rules create allow-ftp ...`)
 3. **Windows에서**: IPDisk로 Z 드라이브 연결
 
+### Colab 로컬 런타임 연결 (3단계)
+1. **VM에서**: Jupyter Server 설정 (`jupyter server --generate-config`) → 토큰 고정
+2. **로컬 PC에서**: SSH 터널링 (`gcloud compute ssh ... --ssh-flag="-L 8888:localhost:8888"`)
+3. **Colab에서**: `http://localhost:8888/?token=mysecrettoken1234` 연결
+
 ### 주요 명령어 치트시트
 ```bash
 # 503 퍼미션 오류 해결
@@ -53,6 +58,9 @@ gcloud compute ssh spai0433@codeit-ai-g2b-search --project=sprint-ai-chunk2-03 -
 12. [접속 및 테스트](#12-접속-및-테스트)
 13. [관리 명령어](#13-관리-명령어)
 14. [Jupyter 커널 등록](#14-jupyter-커널-등록-선택사항)
+
+### Part 3: Colab 로컬 런타임 연결
+15. [Colab과 GCP VM 연결](#15-colab과-gcp-vm-연결)
 
 ---
 
@@ -672,6 +680,395 @@ sudo systemctl restart jupyterhub.service
 
 ---
 
+# Part 3: Colab 로컬 런타임 연결
+
+---
+
+## 15. Colab과 GCP VM 연결
+
+Google Colab에서 GCP VM의 Jupyter Server를 로컬 런타임으로 연결하여 VM의 고성능 자원(GPU, 대용량 메모리)을 활용할 수 있습니다.
+
+### 15.1. VM Jupyter Server 설정 (Token 고정)
+
+#### 설정 파일 생성
+
+VM에 접속하여 Jupyter Server 설정 파일을 생성합니다.
+
+```bash
+# VM 터미널에서 실행
+/opt/miniconda3/bin/jupyter server --generate-config
+```
+
+**생성 경로**: `/home/spai0433/.jupyter/jupyter_server_config.py`
+
+#### 기존 Jupyter Server 중지
+
+포트 충돌을 방지하기 위해 기존 프로세스를 중지합니다.
+
+```bash
+# 실행 중인 Jupyter Server 확인
+ps ax | grep jupyter-server
+
+# 출력 예시:
+# 12345 pts/0    S      0:00 jupyter-server
+# 12346 pts/0    S      0:00 /opt/miniconda3/bin/python -m jupyter-server
+
+# PID를 사용하여 프로세스 종료
+kill 12345
+kill 12346
+
+# 또는 모든 jupyter-server 프로세스 일괄 종료
+pkill -f jupyter-server
+```
+
+#### 설정 파일 수정 (Token 및 Port 고정)
+
+```bash
+# 설정 파일 열기
+nano /home/spai0433/.jupyter/jupyter_server_config.py
+```
+
+**다음 설정을 추가 또는 수정:**
+
+```python
+# 외부 접속 허용 (모든 IP에서 접속 가능)
+c.ServerApp.ip = '*'
+
+# 고정 포트 설정 (Colab 연결 시 사용)
+c.ServerApp.port = 8888
+
+# 비밀번호 인증 제거 (Token 방식 사용)
+c.ServerApp.password = ''
+
+# 고정 토큰 설정 (예시: mysecrettoken1234)
+c.ServerApp.token = 'mysecrettoken1234'
+
+# 브라우저 자동 실행 비활성화
+c.ServerApp.open_browser = False
+
+# 루트 디렉토리 설정 (선택)
+# c.ServerApp.root_dir = '/home/spai0433'
+```
+
+**저장**: `Ctrl + O` → `Enter` → `Ctrl + X`
+
+**주요 설정 항목 설명:**
+
+| 설정 항목 | 설명 | 설정 값 |
+|----------|------|---------|
+| `c.ServerApp.ip` | 외부 접속 허용 | `'*'` |
+| `c.ServerApp.port` | 고정 포트 설정 | `8888` |
+| `c.ServerApp.password` | 비밀번호 인증 제거 | `''` |
+| `c.ServerApp.token` | 고정 토큰 설정 | `'mysecrettoken1234'` |
+
+**보안 주의사항:**
+- 프로덕션 환경에서는 강력한 토큰 사용 권장
+- 토큰은 최소 16자 이상의 무작위 문자열 사용 권장
+- 토큰 생성 예시: `openssl rand -hex 32`
+
+#### Jupyter Server 실행
+
+```bash
+# Jupyter Server 백그라운드 실행
+jupyter server &
+
+# 또는 nohup으로 실행 (터미널 종료 후에도 유지)
+nohup jupyter server > jupyter.log 2>&1 &
+
+# 실행 확인
+ps ax | grep jupyter-server
+
+# 포트 확인
+sudo netstat -tulpn | grep 8888
+
+# 출력 예시:
+# tcp   0   0 0.0.0.0:8888   0.0.0.0:*   LISTEN   12345/python
+```
+
+**서버 종료 방법:**
+```bash
+# 프로세스 ID 확인 후 종료
+ps ax | grep jupyter-server
+kill [PID]
+
+# 또는 일괄 종료
+pkill -f jupyter-server
+```
+
+---
+
+### 15.2. SSH 터널링 설정 (로컬 PC)
+
+로컬 PC에서 GCP VM의 8888 포트를 로컬로 전달합니다.
+
+#### Windows PowerShell 실행
+
+```powershell
+# SSH 터널링 설정
+gcloud compute ssh spai0433@codeit-ai-g2b-search --project sprint-ai-chunk2-03 --ssh-flag="-L 8888:localhost:8888"
+```
+
+**명령어 설명:**
+- `-L 8888:localhost:8888`: VM의 8888 포트를 로컬 8888 포트로 포워딩
+- 이 창을 **닫지 말고** 유지해야 터널링이 활성 상태로 유지됩니다
+
+#### 연결 확인
+
+```powershell
+# 로컬 포트 확인 (다른 PowerShell 창)
+Test-NetConnection -ComputerName localhost -Port 8888
+```
+
+**정상 출력:**
+```
+ComputerName     : localhost
+RemoteAddress    : ::1
+RemotePort       : 8888
+TcpTestSucceeded : True
+```
+
+---
+
+### 15.3. Colab 로컬 런타임 연결
+
+#### 연결 절차
+
+1. **Google Colab 접속**
+   - https://colab.research.google.com/ 접속
+   - 새 노트북 생성 또는 기존 노트북 열기
+
+2. **로컬 런타임 연결**
+   - 우측 상단 **'연결'** 메뉴 클릭
+   - **'로컬 런타임에 연결'** 선택
+
+3. **백엔드 URL 입력**
+   ```
+   http://localhost:8888/?token=mysecrettoken1234
+   ```
+
+4. **연결 클릭**
+   - **'연결'** 버튼 클릭
+   - 연결 성공 시 우측 상단에 녹색 체크 표시
+
+#### 연결 확인
+
+Colab 노트북에서 다음 코드를 실행하여 VM 자원을 사용하는지 확인:
+
+```python
+# 시스템 정보 확인
+import os
+import platform
+import socket
+
+print(f"호스트명: {socket.gethostname()}")
+print(f"플랫폼: {platform.platform()}")
+print(f"Python 버전: {platform.python_version()}")
+print(f"현재 작업 디렉토리: {os.getcwd()}")
+print(f"사용자: {os.getenv('USER')}")
+
+# GPU 확인 (GPU VM인 경우)
+try:
+    import torch
+    print(f"\nGPU 사용 가능: {torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        print(f"GPU 개수: {torch.cuda.device_count()}")
+        print(f"GPU 이름: {torch.cuda.get_device_name(0)}")
+except ImportError:
+    print("\nPyTorch가 설치되지 않았습니다.")
+```
+
+**예상 출력:**
+```
+호스트명: codeit-ai-g2b-search
+플랫폼: Linux-5.15.0-1052-gcp-x86_64-with-glibc2.35
+Python 버전: 3.10.x
+현재 작업 디렉토리: /home/spai0433
+사용자: spai0433
+```
+
+---
+
+### 15.4. 문제 해결
+
+#### 연결 실패: "Unable to connect to the runtime"
+
+**원인 1**: SSH 터널링이 끊김
+```powershell
+# SSH 터널링 재실행
+gcloud compute ssh spai0433@codeit-ai-g2b-search --project sprint-ai-chunk2-03 --ssh-flag="-L 8888:localhost:8888"
+```
+
+**원인 2**: Jupyter Server가 중지됨
+```bash
+# VM에서 Jupyter Server 재시작
+jupyter server &
+```
+
+**원인 3**: 잘못된 토큰
+```bash
+# 설정 파일에서 토큰 확인
+grep token /home/spai0433/.jupyter/jupyter_server_config.py
+
+# Colab에서 동일한 토큰 사용 확인
+```
+
+#### 포트 충돌 오류
+
+**로컬 PC의 8888 포트가 이미 사용 중인 경우:**
+
+```powershell
+# 포트 확인
+netstat -ano | findstr :8888
+
+# 프로세스 종료 (관리자 권한)
+taskkill /PID [PID번호] /F
+
+# 또는 다른 포트 사용
+gcloud compute ssh spai0433@codeit-ai-g2b-search --project sprint-ai-chunk2-03 --ssh-flag="-L 9999:localhost:8888"
+
+# Colab URL도 변경
+# http://localhost:9999/?token=mysecrettoken1234
+```
+
+#### 연결은 되지만 파일 접근 불가
+
+**권한 확인:**
+```bash
+# VM에서 작업 디렉토리 권한 확인
+ls -la /home/spai0433
+
+# 필요시 권한 수정
+chmod 755 /home/spai0433
+```
+
+---
+
+### 15.5. 자동화 스크립트 (선택)
+
+반복 작업을 자동화하는 스크립트입니다.
+
+#### VM 자동 실행 스크립트
+
+`/home/spai0433/start_jupyter.sh` 생성:
+
+```bash
+#!/bin/bash
+
+# 기존 Jupyter Server 종료
+pkill -f jupyter-server
+
+# 로그 디렉토리 생성
+mkdir -p ~/logs
+
+# Jupyter Server 시작
+nohup /opt/miniconda3/bin/jupyter server > ~/logs/jupyter_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+
+echo "Jupyter Server 시작됨. PID: $!"
+echo "로그: ~/logs/"
+```
+
+**실행 권한 부여 및 실행:**
+```bash
+chmod +x ~/start_jupyter.sh
+~/start_jupyter.sh
+```
+
+#### Windows 자동 터널링 배치 파일
+
+`start_colab_tunnel.bat` 생성:
+
+```batch
+@echo off
+echo Starting SSH tunnel for Colab...
+gcloud compute ssh spai0433@codeit-ai-g2b-search --project sprint-ai-chunk2-03 --ssh-flag="-L 8888:localhost:8888"
+pause
+```
+
+**사용법**: 배치 파일을 더블 클릭하여 실행
+
+---
+
+### 15.6. 보안 강화 (프로덕션 환경)
+
+#### 강력한 토큰 생성
+
+```bash
+# 32자 무작위 토큰 생성
+openssl rand -hex 32
+
+# 출력 예시:
+# a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2
+```
+
+#### IP 화이트리스트 설정
+
+특정 IP만 접속 허용:
+
+```python
+# jupyter_server_config.py에 추가
+c.ServerApp.ip = '127.0.0.1'  # SSH 터널링만 허용
+```
+
+#### HTTPS 설정 (고급)
+
+```bash
+# SSL 인증서 생성
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout ~/.jupyter/mykey.key -out ~/.jupyter/mycert.pem
+
+# jupyter_server_config.py에 추가
+c.ServerApp.certfile = '/home/spai0433/.jupyter/mycert.pem'
+c.ServerApp.keyfile = '/home/spai0433/.jupyter/mykey.key'
+```
+
+---
+
+### 15.7. 사용 팁
+
+#### Colab에서 VM 파일 접근
+
+```python
+# Colab 노트북에서 실행
+!ls -la /home/spai0433
+!cat /home/spai0433/myfile.txt
+```
+
+#### VM에서 대용량 데이터 처리
+
+```python
+# Colab에서 VM의 대용량 데이터 로드
+import pandas as pd
+
+# VM의 파일 경로 사용
+df = pd.read_csv('/home/spai0433/data/large_dataset.csv')
+print(f"Dataset shape: {df.shape}")
+```
+
+#### 패키지 설치
+
+Colab에서 VM 환경에 패키지 설치:
+
+```python
+# Colab 노트북에서 실행
+!pip install transformers accelerate
+
+# 설치 확인
+import transformers
+print(transformers.__version__)
+```
+
+---
+
+### 15.8. 주요 URL 및 포트 정리
+
+| 항목 | URL/포트 | 용도 |
+|------|---------|------|
+| **Jupyter Server (VM)** | `0.0.0.0:8888` | VM 내부 서버 |
+| **SSH 터널링** | `localhost:8888` | 로컬 PC 포트 포워딩 |
+| **Colab 연결** | `http://localhost:8888/?token=...` | Colab 백엔드 URL |
+
+---
+
 ## 문제 해결
 
 ### FTP 연결 문제
@@ -901,6 +1298,14 @@ gcloud compute instances describe codeit-ai-g2b-search --zone=us-central1-c --fo
 - [ ] 웹 브라우저 접속 확인
 - [ ] 로그인 및 노트북 실행 확인
 
+### Part 3: Colab 로컬 런타임 연결
+- [ ] Jupyter Server 설정 파일 생성 완료
+- [ ] 고정 토큰 설정 완료
+- [ ] Jupyter Server 실행 확인
+- [ ] SSH 터널링 설정 완료
+- [ ] Colab 로컬 런타임 연결 완료
+- [ ] VM 자원 사용 확인
+
 ---
 
 ## 주요 접속 정보
@@ -909,16 +1314,18 @@ gcloud compute instances describe codeit-ai-g2b-search --zone=us-central1-c --fo
 |--------|----------|------|------|
 | FTP | `ftp://34.9.92.3` | 21, 30000-30009 | 파일 전송 |
 | JupyterHub | `http://34.9.92.3:8000` | 8000 | 웹 기반 노트북 |
+| Colab (SSH 터널링) | `http://localhost:8888/?token=...` | 8888 | Colab 로컬 런타임 |
 | SSH | `gcloud compute ssh ...` | 22 | VM 관리 |
 
 **주의**: IP 주소는 본인의 VM 외부 IP로 변경하세요.
 
 ---
 
-**문서 버전**: 2.0
+**문서 버전**: 3.0
 **최종 수정일**: 2025-11-15
 **작성자**: 김명환
 
 **변경 이력**:
+- v3.0 (2025-11-15): Colab 로컬 런타임 연결 가이드 추가
 - v2.0 (2025-11-15): VSFTPD 설정, GCP 방화벽, Windows FTP 연결 내용 추가
 - v1.0 (2025-11-10): JupyterHub 설치 가이드 초안 작성
