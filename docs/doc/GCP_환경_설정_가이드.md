@@ -27,6 +27,9 @@ gcloud compute firewall-rules create allow-ftp --description="Allow FTP Control 
 
 # VM 태그 추가 (Windows PowerShell)
 gcloud compute instances add-tags codeit-ai-g2b-search --tags=ftp-server --zone=us-central1-c --project=sprint-ai-chunk2-03
+
+gcloud compute ssh spai0433@codeit-ai-g2b-search --project=sprint-ai-chunk2-03 --zone=us-central1-c
+
 ```
 
 ---
@@ -49,6 +52,7 @@ gcloud compute instances add-tags codeit-ai-g2b-search --tags=ftp-server --zone=
 11. [JupyterHub 방화벽 설정](#11-jupyterhub-방화벽-설정)
 12. [접속 및 테스트](#12-접속-및-테스트)
 13. [관리 명령어](#13-관리-명령어)
+14. [Jupyter 커널 등록](#14-jupyter-커널-등록-선택사항)
 
 ---
 
@@ -534,6 +538,79 @@ print(f"Python version: {sys.version}")
 import os
 print(f"User: {os.getenv('USER')}")
 print(f"Home: {os.getenv('HOME')}")
+```
+
+---
+
+## 14. Jupyter 커널 등록 (선택사항)
+
+### 개별 사용자 환경을 위한 커널 등록
+
+각 사용자가 자신만의 Python 환경을 사용하려면 개별 커널을 등록할 수 있습니다.
+
+### Conda 환경 생성 및 커널 등록
+
+```bash
+# 1. Conda 환경 생성
+conda create -n py310_openai python=3.10 -y
+
+# 2. 환경 활성화
+conda activate py310_openai
+
+# 3. 필요한 패키지 설치
+pip install -r requirements.txt
+
+# 4. ipykernel 설치
+conda install ipykernel -y
+
+# 5. Jupyter 커널 등록
+python -m ipykernel install --user --name py310_openai --display-name "Python 3.10 (OpenAI Env)"
+
+# 6. 등록된 커널 확인
+jupyter kernelspec list
+```
+
+### 출력 예시
+
+```
+Available kernels:
+  py310_openai    /home/spai0433/.local/share/jupyter/kernels/py310_openai
+  python3         /opt/miniconda3/envs/jhub-env/share/jupyter/kernels/python3
+```
+
+### 커널 관리 명령어
+
+```bash
+# 등록된 커널 목록 확인
+jupyter kernelspec list
+
+# 특정 커널 삭제
+jupyter kernelspec uninstall py310_openai
+
+# 커널 정보 확인
+jupyter kernelspec list --json
+```
+
+### JupyterHub에서 커널 사용
+
+1. JupyterHub에 로그인
+2. 새 노트북 생성 시 **"Python 3.10 (OpenAI Env)"** 커널 선택
+3. 또는 기존 노트북에서 **Kernel > Change Kernel** 메뉴로 커널 변경
+
+### 여러 환경 예시
+
+```bash
+# 데이터 분석용 환경
+conda create -n data_analysis python=3.10 pandas numpy matplotlib -y
+conda activate data_analysis
+conda install ipykernel -y
+python -m ipykernel install --user --name data_analysis --display-name "Python 3.10 (Data Analysis)"
+
+# 머신러닝 환경
+conda create -n ml_env python=3.10 scikit-learn tensorflow -y
+conda activate ml_env
+conda install ipykernel -y
+python -m ipykernel install --user --name ml_env --display-name "Python 3.10 (ML)"
 ```
 
 ---

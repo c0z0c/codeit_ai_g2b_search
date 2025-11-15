@@ -79,78 +79,20 @@ gantt
 
 ## 🏗️ 시스템 아키텍처
 
-### 4계층 아키텍처
+4계층 구조 (UI → Application → Data Access → Storage)로 구성된 모듈화 시스템입니다.
 
-```mermaid
-graph TB
-    subgraph UI["🖥️ 사용자 인터페이스 계층"]
-        WebUI["Streamlit Web UI<br/>문서 업로드 | 채팅 | 세션 관리"]
-    end
+### 핵심 구성
 
-    subgraph APP["⚙️ 애플리케이션 계층"]
-        DocProc["DocumentProcessor<br/>PDF 파싱"]
-        EmbProc["EmbeddingProcessor<br/>벡터 임베딩"]
-        LLMProc["LLM & Retrieval<br/>RAG 답변"]
-    end
+- **UI 계층**: Streamlit 웹 앱
+- **Application 계층**: DocumentProcessor, EmbeddingProcessor, LLMProcessor
+- **Data Access 계층**: DocumentsDB, VectorStoreManager, ChatHistoryDB
+- **Storage 계층**: SQLite × 2 (documents.db, chat_history.db) + FAISS Index
 
-    subgraph DAL["💾 데이터 접근 계층"]
-        DocsDB["DocumentsDB"]
-        ChatDB["ChatHistoryDB"]
-    end
+### 주요 특징
 
-    subgraph STORAGE["🗄️ 데이터 저장소"]
-        SQLite["SQLite × 3"]
-        FAISS["FAISS Index"]
-    end
-
-    WebUI --> DocProc
-    WebUI --> EmbProc
-    WebUI --> LLMProc
-
-    DocProc --> DocsDB
-    EmbProc --> EmbDB
-    LLMProc --> ChatDB
-
-    DocsDB --> SQLite
-    EmbDB --> SQLite
-    EmbDB --> FAISS
-    ChatDB --> SQLite
-
-    style UI stroke-width:2px,stroke:#e3f2fd
-    style APP stroke-width:2px,stroke:#fff9c4
-    style DAL stroke-width:2px,stroke:#e8f5e9
-    style STORAGE stroke-width:2px,stroke:#fce4ec
-```
-
-### 디렉토리 구조
-
-```
-codeit_ai_g2b_search/
-├── src/
-│   ├── db/                         # 데이터베이스 계층
-│   │   ├── documents_db.py         # 문서 메타데이터
-│   │   ├── embeddings_db.py        # 임베딩 메타데이터
-│   │   └── chat_history_db.py      # 채팅 히스토리
-│   ├── processors/                 # 처리 계층
-│   │   ├── document_processor.py   # PDF → Markdown
-│   │   └── embedding_processor.py  # 텍스트 → 벡터
-│   ├── llm/                        # LLM 계층
-│   │   ├── retrieval.py            # 유사도 검색
-│   │   └── llm_processor.py        # RAG 답변 생성
-│   └── utils/                      # 유틸리티
-├── data/                           # 데이터 저장소
-│   ├── documents.db                # SQLite
-│   ├── embeddings.db               # SQLite
-│   ├── chat_history.db             # SQLite
-│   └── vectorstore/*.faiss         # FAISS 인덱스
-├── docs/                           # 문서
-│   └── doc/
-│       ├── RAG_기반_PEP_문서_처리_시스템_설계서.md
-│       ├── 시스템_아키텍처_설계서.md
-│       └── 프로젝트_체크리스트.md
-├── app.py                          # Streamlit 메인 앱
-└── requirements.txt                # 의존성
-```
+- **통합 FAISS 관리**: 모든 문서의 임베딩을 단일 FAISS 인덱스로 관리
+- **메타데이터 통합**: Document.metadata에 파일명, 페이지 번호 포함
+- **파일 해시 기반 추적**: SHA-256으로 중복 제거 및 증분 업데이트
 
 > 📚 **상세 문서**: [시스템 아키텍처 설계서](docs/doc/시스템_아키텍처_설계서.md)
 
@@ -191,38 +133,19 @@ streamlit run app.py
 
 ## 📊 데이터베이스 구조
 
-### 핵심 DB: 3개의 SQLite + FAISS
+### 핵심 DB: 2개 SQLite + FAISS
 
-| DB | 테이블 | 주요 역할 | 연결 키 |
-|----|--------|-----------|---------|
-| **documents.db** | file_info<br/>page_data | 원본 문서 메타데이터<br/>페이지별 Markdown 저장 | `file_hash` (SHA-256) |
-| **embeddings.db** | embedding_meta<br/>chunk_mapping | 임베딩 설정 및 메타데이터<br/>청크 텍스트 및 벡터 매핑 | `embedding_hash`<br/>`file_hash` |
-| **chat_history.db** | chat_sessions<br/>chat_messages | 세션 관리<br/>대화 내역 및 출처 저장 | `session_id` (UUID) |
-| **FAISS Index** | *.faiss 파일 | 벡터 유사도 검색 (L2) | `vector_index` |
+| DB | 테이블 | 주요 역할 |
+|----|--------|-----------|
+| **documents.db** | TB_DOCUMENTS | 문서 텍스트 콘텐츠 저장 |
+| **chat_history.db** | chat_sessions<br/>chat_messages | 세션 관리<br/>대화 내역 및 출처 저장 |
+| **FAISS Index** | vectorstore.faiss | 벡터 + 메타데이터 통합 관리 |
 
-### 핵심 설계: 파일 해시 기반 연결
+### 특징
 
-```mermaid
-graph LR
-    FH["file_hash<br/>(SHA-256)"]
-
-    FH --> DocsDB["documents.db<br/>file_info<br/>page_data"]
-    FH --> EmbDB["embeddings.db<br/>chunk_mapping"]
-    EmbDB --> FAISS["FAISS Index<br/>vectorstore/*.faiss"]
-
-    style FH stroke-width:2px,stroke:#ffeb3b,stroke:#f57f17,stroke-width:3px
-    style DocsDB stroke-width:2px,stroke:#e1f5fe,stroke:#01579b
-    style EmbDB stroke-width:2px,stroke:#f3e5f5,stroke:#4a148c
-    style FAISS stroke-width:2px,stroke:#ffebee,stroke:#b71c1c
-```
-
-**embedding_hash 계산**:
-
-$$
-\text{embedding\_{hash}} = \text{SHA256}(\text{file\_{hash}} + \text{JSON}(\text{config}))
-$$
-
-여기서 `config = {chunk_size, chunk_overlap, model}`
+- **EmbeddingsDB 제거**: FAISS 내부 메타데이터만 사용
+- **VectorStoreManager**: FAISS 인덱스 및 메타데이터 통합 관리
+- **파일 해시 중심**: SHA-256 기반 중복 제거
 
 > 📚 **상세 스키마**: [시스템 아키텍처 설계서](docs/doc/시스템_아키텍처_설계서.md#데이터베이스-er-다이어그램)
 
@@ -313,33 +236,12 @@ retrieval:
 
 ## 🔄 데이터 처리 흐름
 
-```mermaid
-flowchart TD
-    Start([PDF 업로드])
+1. **문서 처리**: PDF → DocumentProcessor → DocumentsDB (텍스트 저장)
+2. **임베딩 생성**: EmbeddingProcessor → FAISS 인덱스 (벡터 + 메타데이터)
+3. **질의응답**: 사용자 질의 → Retrieval (FAISS 검색) → LLMProcessor (RAG 답변)
+4. **히스토리 저장**: ChatHistoryDB (대화 내역 및 출처)
 
-    Start --> P1["1️⃣ DocumentProcessor<br/>파일 해시 계산<br/>PDF → Markdown"]
-    P1 --> P2["2️⃣ DocumentsDB<br/>file_info, page_data 저장"]
-    P2 --> P3["3️⃣ EmbeddingProcessor<br/>텍스트 청킹<br/>벡터 임베딩"]
-    P3 --> P4["4️⃣ EmbeddingsDB + FAISS<br/>메타데이터 및 인덱스 저장"]
-
-    P4 --> Query{사용자 질의}
-    Query --> P5["5️⃣ Retrieval<br/>유사도 검색<br/>top_k 청크 반환"]
-    P5 --> P6["6️⃣ LLMProcessor<br/>검색 결과 + 프롬프트<br/>→ LLM 답변"]
-    P6 --> P7["7️⃣ ChatHistoryDB<br/>대화 내역 및 출처 저장"]
-
-    P7 --> End([답변 반환])
-
-    style Start stroke-width:2px,stroke:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style End stroke-width:2px,stroke:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Query stroke-width:2px,stroke:#fff9c4,stroke:#f57f00,stroke-width:2px
-    style P1 stroke-width:2px,stroke:#e3f2fd
-    style P2 stroke-width:2px,stroke:#e3f2fd
-    style P3 stroke-width:2px,stroke:#f3e5f5
-    style P4 stroke-width:2px,stroke:#f3e5f5
-    style P5 stroke-width:2px,stroke:#ffebee
-    style P6 stroke-width:2px,stroke:#ffebee
-    style P7 stroke-width:2px,stroke:#e1f5fe
-```
+> 📚 **상세 흐름도**: [시스템 아키텍처 설계서](docs/doc/시스템_아키텍처_설계서.md#데이터-흐름)
 
 ## 📝 더미 데이터
 
@@ -365,13 +267,13 @@ streamlit run app.py
 
 ## 🎯 핵심 특징
 
-| 특징 | 설명 | 구현 |
-|------|------|------|
-| **중복 제거** | SHA-256 해시 기반 파일 식별 | `file_hash = hashlib.sha256(file_content).hexdigest()` |
-| **증분 업데이트** | 변경된 문서만 재처리 | `embedding_hash` 비교로 변경 감지 |
-| **출처 추적** | 답변의 근거 페이지 표시 | `retrieved_chunks` JSON 저장 |
-| **유사도 계산** | FAISS L2 거리 → [0, 1] 정규화 | $\text{similarity} = \frac{1}{1 + \text{distance}}$ |
-| **세션 관리** | 브라우저별 독립적 채팅 세션 | UUID 기반 `session_id` |
+- **중복 제거**: SHA-256 파일 해시로 동일 파일 자동 감지
+- **증분 업데이트**: 변경된 문서만 재처리 (파일 해시 기반)
+- **출처 추적**: Document.metadata에 파일명, 페이지 번호 포함
+- **통합 FAISS**: 단일 인덱스로 전체 문서 관리, 메타데이터 통합
+- **거리 기반 검색**: FAISS L2 거리 직접 사용 (작을수록 유사도 높음)
+
+> 📚 **구현 세부사항**: [시스템 아키텍처 설계서](docs/doc/시스템_아키텍처_설계서.md#핵심-컴포넌트)
 
 ## 📚 프로젝트 문서
 
