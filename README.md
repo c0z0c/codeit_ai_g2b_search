@@ -280,7 +280,6 @@ streamlit run app.py
 - 📖 [RAG 기반 PEP 문서 처리 시스템 설계서](docs/doc/RAG_기반_PEP_문서_처리_시스템_설계서.md)
 - 🏗️ [시스템 아키텍처 설계서](docs/doc/시스템_아키텍처_설계서.md) (Mermaid 다이어그램 포함)
 - ✅ [프로젝트 체크리스트](docs/doc/프로젝트_체크리스트.md) (3주 일정)
-- 👥 [개발자별 체크리스트](docs/doc/개발자별_체크리스트.md)
 
 ## 👥 팀 구성
 
