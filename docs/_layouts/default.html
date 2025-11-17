@@ -1174,7 +1174,7 @@
                             rankSpacing: 120
                         },
                         theme: 'neutral', /* GitHub 스타일에 가까운 테마 */
-                        themeVariables: { fontSize: '24px' }
+                        themeVariables: { fontSize: '10px' }
                     });
                     mermaid.init(undefined, document.querySelectorAll('.mermaid'));
                 }
@@ -1209,7 +1209,7 @@
                         securityLevel: 'loose',
                         flowchart: { useMaxWidth: true, nodeSpacing: 60, rankSpacing: 120 },
                         theme: theme === 'dark' ? 'dark' : 'neutral',
-                        themeVariables: { fontSize: '24px' }
+                        themeVariables: { fontSize: '10px' }
                     });
                     document.querySelectorAll('.mermaid').forEach(el => {
                         // 이미 렌더링된 svg가 있다면 제거
