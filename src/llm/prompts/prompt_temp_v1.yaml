@@ -1,0 +1,16 @@
+id: prompt_temp_v1
+name: "프롬프트 템플릿"
+description: "검색된 문서 청크 기반 질문 답변 템플릿"
+template: |
+  다음 문서를 참고하여 질문에 한국어로 답변해주세요.
+
+  참고 문서:
+  {context}
+
+  질문: {query}
+
+  답변:
+variables:
+  - context
+  - query
+version: 1.0
