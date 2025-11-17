@@ -2,13 +2,24 @@
 
 ## 🎯 5분 안에 시작하기
 
-### 1단계: 패키지 설치
+### 1단계: 환경 설정 및 패키지 설치
 
-```
+#### GCP VM 접속
+```bash
 gcloud compute firewall-rules list --project=sprint-ai-chunk2-03
 gcloud compute ssh spai0433@codeit-ai-g2b-search --zone=us-central1-c --project=sprint-ai-chunk2-03
 ```
 
+#### Conda 환경 생성 (권장)
+```bash
+# Python 3.10 환경 생성
+conda create -n py310_openai python=3.10 -y
+
+# 환경 활성화
+conda activate py310_openai
+```
+
+#### 패키지 설치
 ```bash
 pip install -r requirements.txt
 ```
@@ -51,9 +62,28 @@ python scripts/generate_dummy_simple.py
 - 총 메시지 수: 4개
 ```
 
-### 4단계: Streamlit 앱 실행
+### 4단계: Jupyter 커널 등록 (선택사항)
+
+Jupyter Notebook/Lab에서 이 환경을 사용하려면:
 
 ```bash
+# ipykernel 설치
+conda install ipykernel -y
+
+# Jupyter 커널 등록
+python -m ipykernel install --user --name py310_openai --display-name "Python 3.10 (OpenAI Env)"
+
+# 등록된 커널 확인
+jupyter kernelspec list
+```
+
+### 5단계: Streamlit 앱 실행
+
+```bash
+# Conda 환경 활성화 (필요시)
+conda activate py310_openai
+
+# Streamlit 앱 실행
 streamlit run app.py
 ```
 

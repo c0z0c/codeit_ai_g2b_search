@@ -4,28 +4,28 @@ langchain-core==0.2.38
 langchain-community==0.2.16
 langchain-openai==0.1.20
 langchain-text-splitters==0.2.4
-openai>=1.0.0
-tiktoken>=0.5.0
+openai==1.109.1  # 버전 업데이트
+tiktoken==0.9.0  # 버전 업데이트
 
 # PDF 및 문서 처리
-PyMuPDF>=1.23.0
-pymupdf4llm>=0.0.10
-faiss-cpu>=1.7.0
-Pillow>=10.0.0
+PyMuPDF==1.26.6  # 버전 업데이트
+pymupdf4llm==0.2.0  # 버전 업데이트
+faiss-cpu==1.12.0  # 버전 업데이트
+Pillow==11.3.0  # 버전 업데이트
 
 # 데이터 처리 및 과학 계산
-numpy<2.0.0
-pandas>=2.0.0
-scipy>=1.11.0,<1.15.0
-scikit-learn>=1.3.0,<1.6.0
-dataclasses-json>=0.5.0
-python-dotenv>=0.19.0
-tqdm>=4.60.0
-pytz>=2021.1
+numpy==1.26.4  # 버전 업데이트
+pandas==2.3.3  # 버전 업데이트
+scipy==1.14.1  # 버전 업데이트
+scikit-learn==1.5.2  # 버전 업데이트
+dataclasses-json==0.6.7  # 버전 업데이트
+python-dotenv==1.1.1  # 버전 업데이트
+tqdm==4.67.1  # 버전 업데이트
+pytz==2025.2  # 버전 업데이트
 
 # 시각화
-matplotlib>=3.7.0,<3.10.0
-seaborn>=0.12.0,<0.14.0
+matplotlib==3.9.4  # 버전 업데이트
+seaborn==0.13.2  # 버전 업데이트
 
 # Streamlit 웹 애플리케이션
 streamlit==1.40.1

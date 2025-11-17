@@ -64,6 +64,10 @@ class Config:
         PAGE_MARKER_FORMAT (str): 페이지 번호 마커 포맷
         TOKEN_ESTIMATION_DIVISOR (int): 토큰 수 추정 나눗수 (문자수/4)
         
+        MARKDOWN_PROTECT_BLOCKS (List[str]): 보호할 블록 타입 리스트 ['code', 'math', 'inline_math', 'mermaid']
+        MARKDOWN_REMOVE_ELEMENTS (List[str]): 제거할 요소 리스트 ['html', 'images', 'links', 'emphasis', 'headers']
+        MARKDOWN_MAX_LINES (Dict[str, int]): 블록 타입별 최대 라인 수 {'code': 100, 'math': 50}
+        
         HASH_ALGORITHM (str): 해시 알고리즘 (sha256, md5 등)
         
         LOG_LEVEL (str): 로깅 레벨 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
@@ -81,15 +85,15 @@ class Config:
 
     # ==================== OpenAI API 설정 ====================
     OPENAI_API_KEY: Optional[str] = None  # API 키 (환경 변수에서 자동 로드)
-    OPENAI_MODEL: str = "gpt-4o-mini"  # 답변 생성용 LLM 모델
+    OPENAI_MODEL: str = "gpt-5-mini"  # 답변 생성용 LLM 모델
     OPENAI_TEMPERATURE: float = 0.0  # 생성 온도 (0.0=결정적, 2.0=창의적)
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"  # 임베딩 모델
     OPENAI_TOKENIZER_MODEL: str = "gpt-4"  # 토큰 카운팅용 모델명
 
     # ==================== 청킹(Chunking) 설정 ====================
     CHUNKING_MODE: str = "token"  # 청킹 모드 ('token' 또는 'character')
-    CHUNK_SIZE: int = 600  # 청크 크기 (토큰 단위, 권장: 500-1000)
-    CHUNK_OVERLAP: int = 100  # 청크 중첩 크기 (문맥 유지용)
+    CHUNK_SIZE: int = 1500  # 청크 크기 (토큰 단위, 권장: 500-1000)
+    CHUNK_OVERLAP: int = 300  # 청크 중첩 크기 (문맥 유지용)
     CHUNK_SEPARATORS: List[str] = field(default_factory=lambda: [
         "\n\n", "\n", ". ", "! ", "? ", ", ", " ", ""
     ])  # 분할 구분자 우선순위 (단락 > 문장 > 단어)
@@ -118,10 +122,27 @@ class Config:
     CONFIG_PATH: str = "config/config.json"  # 설정 파일 경로
 
     # ==================== 문서 처리 설정 ====================
+    MARKER_DUMP_ENABLED: bool = True  # 페이지 마커 덤프 활성화 여부
+    MARKER_DUMP_PATH: str = "data/markers"  # 페이지 마커 덤프 디렉토리
     EMPTY_PAGE_THRESHOLD: int = 10  # 빈 페이지 판별 기준 (10자 이하)
+    ERROR_PAGE_MARKER: str = "--- [오류페이지] ---"  # 오류 페이지 마커 문자열 (변환실패)
     EMPTY_PAGE_MARKER: str = "--- [빈페이지] ---"  # 빈 페이지 마커 문자열
     PAGE_MARKER_FORMAT: str = "--- 페이지 {page_num} ---"  # 페이지 구분자 포맷
     TOKEN_ESTIMATION_DIVISOR: int = 4  # 토큰 수 추정용 나눗수 (문자수/4 ≈ 토큰수)
+
+    # ==================== 마크다운 전처리 설정 ====================
+    MARKDOWN_PROTECT_BLOCKS: List[str] = field(default_factory=lambda: [
+        'code', 'math', 'inline_math', 'mermaid'
+    ])  # 보호할 블록 타입 리스트 (빈 리스트 = 보호 비활성화)
+    
+    MARKDOWN_REMOVE_ELEMENTS: List[str] = field(default_factory=lambda: [
+        'html', 'images', 'links', 'emphasis', 'headers', 'blockquotes', 'lists'
+    ])  # 제거할 요소 리스트 (빈 리스트 = 제거 비활성화)
+        
+    MARKDOWN_MAX_LINES: Dict[str, int] = field(default_factory=lambda: {
+        'code': 100,
+        'math': 50
+    })  # 블록 타입별 최대 라인 수
 
     # ==================== 해시 설정 ====================
     HASH_ALGORITHM: str = "sha256"  # 문서/임베딩 해시 알고리즘
@@ -139,7 +160,7 @@ class Config:
 참고 문서:
 {context}
 
-질문: {query}
+질문: {question}
 
 답변:"""  # RAG 시스템 프롬프트 템플릿 ({context}, {query} 플레이스홀더)
 
@@ -168,6 +189,9 @@ class Config:
     def load_from_json(cls, config_path: Optional[str] = None) -> 'Config':
         """
         config.json 파일에서 설정 로드
+        
+        JSON에만 존재하는 키는 동적 속성으로 추가
+        기존 config.json에 없는 신규 옵션은 dataclass 기본값 자동 적용
 
         Args:
             config_path: config.json 파일 경로
@@ -180,22 +204,42 @@ class Config:
 
         config_file = Path(config_path)
 
-        # 기본 설정으로 시작
-        config_data = {}
-
+        # dataclass 기본값 딕셔너리 생성
+        default_instance = cls()
+        default_dict = asdict(default_instance)
+        
         # JSON 파일이 존재하면 로드
+        config_data = {}
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
-            print(f"✓ 설정 파일 로드 완료: {config_path}")
+            print(f"설정 파일 로드 완료: {config_path}")
+        
+        # 신규 옵션 자동 병합 (기본값 + JSON)
+        merged_data = {**default_dict, **config_data}
+        
+        # 신규 옵션 로그 출력 (dataclass에 추가된 필드)
+        new_keys = set(default_dict.keys()) - set(config_data.keys())
+        if new_keys and config_file.exists():
+            print(f"신규 옵션 자동 적용: {', '.join(sorted(new_keys))}")
+        
+        # JSON에만 존재하는 키 (동적 속성으로 추가될 항목)
+        json_only_keys = set(config_data.keys()) - set(default_dict.keys())
+        if json_only_keys:
+            print(f"JSON 전용 옵션 동적 추가: {', '.join(sorted(json_only_keys))}")
 
         # 환경 변수에서 API 키 로드 (최우선)
         api_key = os.getenv('OPENAI_API_KEY')
         if api_key:
-            config_data['OPENAI_API_KEY'] = api_key
+            merged_data['OPENAI_API_KEY'] = api_key
 
-        # Config 인스턴스 생성
-        instance = cls(**config_data)
+        # dataclass 필드만으로 인스턴스 생성
+        dataclass_fields = {k: v for k, v in merged_data.items() if k in default_dict}
+        instance = cls(**dataclass_fields)
+        
+        # JSON 전용 키를 동적 속성으로 추가
+        for key in json_only_keys:
+            setattr(instance, key, config_data[key])
 
         # 검증
         instance.validate()
@@ -206,6 +250,7 @@ class Config:
         """
         현재 설정을 config.json 파일로 저장
         
+        dataclass 필드 + 동적 속성 모두 저장
         JSON 직렬화 불가능한 타입이 있으면 ValueError 발생
 
         Args:
@@ -223,56 +268,37 @@ class Config:
         config_file = Path(config_path)
         config_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # dataclass를 dict로 변환
+        # dataclass 필드 변환
         config_dict = asdict(self)
+        
+        # 동적 속성 추가 (dataclass 필드가 아닌 것들)
+        dataclass_field_names = {f.name for f in self.__dataclass_fields__.values()}
+        for key in dir(self):
+            if not key.startswith('_') and key not in dataclass_field_names:
+                attr = getattr(self, key)
+                if not callable(attr):
+                    config_dict[key] = attr
+        
+        # 제외할 키 제거
         config_dict.pop('_instance', None)
-        config_dict['OPENAI_API_KEY'] = None  # 보안: API 키 제외
+        config_dict.pop('OPENAI_API_KEY', None)  # 보안: API 키 제외
 
         # JSON 직렬화 가능 여부 검증
         for key, value in config_dict.items():
             if value is None:
                 continue
             
-            # 허용 타입: str, int, float, bool, list, dict
             if not isinstance(value, (str, int, float, bool, list, dict)):
-                try:
-                    json.dumps(value)
-                except (TypeError, ValueError):
-                    raise ValueError(
-                        f"Config.{key}의 타입 '{type(value).__name__}'은 JSON 직렬화 불가능합니다. "
-                        f"허용 타입: str, int, float, bool, list, dict"
-                    )
+                raise ValueError(
+                    f"Config.{key}의 타입 '{type(value).__name__}'은 JSON 직렬화 불가능합니다. "
+                    f"허용 타입: str, int, float, bool, list, dict"
+                )
 
-        # 임시 파일로 저장
-        temp_file = config_path + ".tmp"
-        Path(temp_file).unlink(missing_ok=True)
-        estimated_size = len(json.dumps(config_dict, ensure_ascii=False).encode('utf-8'))
+        # 파일 저장
+        with open(config_file, "w", encoding='utf-8') as f:
+            json.dump(config_dict, f, indent=2, ensure_ascii=False)
 
-        with open(temp_file, "w", encoding='utf-8', buffering=8192) as f:
-            if estimated_size > 10 * 1024 * 1024:
-                # 대용량 파일 스트리밍 저장
-                f.write('{\n')
-                items = list(config_dict.items())
-                for i, (key, value) in enumerate(items):
-                    f.write(f'  {json.dumps(key, ensure_ascii=False)}: ')
-                    f.write(json.dumps(value, indent=2, ensure_ascii=False).replace('\n', '\n  '))
-                    if i < len(items) - 1:
-                        f.write(',')
-                    f.write('\n')
-
-                    if i % 100 == 0:
-                        f.flush()
-                f.write('}')
-            else:
-                json.dump(config_dict, f, indent=2, ensure_ascii=False)
-
-            f.flush()
-            os.fsync(f.fileno())
-
-        # 원자적 교체 (atomic replace)
-        os.replace(temp_file, config_path)
-
-        print(f"[Config] 설정 파일 저장: {config_path}")
+        print(f"설정 파일 저장 완료: {config_path} (필드 수: {len(config_dict)})")
         return True
 
     def validate(self) -> bool:
@@ -312,14 +338,30 @@ class Config:
         # 임베딩 배치 크기 검증
         if self.EMBEDDING_BATCH_SIZE <= 0:
             errors.append("EMBEDDING_BATCH_SIZE는 양수여야 합니다.")
+        
+        # 마크다운 전처리 옵션 검증
+        valid_protect_blocks = {'code', 'math', 'inline_math', 'mermaid'}
+        invalid_protect = set(self.MARKDOWN_PROTECT_BLOCKS) - valid_protect_blocks
+        if invalid_protect:
+            errors.append(f"MARKDOWN_PROTECT_BLOCKS에 잘못된 값: {invalid_protect}. 허용: {valid_protect_blocks}")
+        
+        valid_remove_elements = {'html', 'images', 'links', 'emphasis', 'headers', 'blockquotes', 'lists'}
+        invalid_remove = set(self.MARKDOWN_REMOVE_ELEMENTS) - valid_remove_elements
+        if invalid_remove:
+            errors.append(f"MARKDOWN_REMOVE_ELEMENTS에 잘못된 값: {invalid_remove}. 허용: {valid_remove_elements}")
+        
+        valid_max_lines_keys = {'code', 'math'}
+        invalid_max_lines = set(self.MARKDOWN_MAX_LINES.keys()) - valid_max_lines_keys
+        if invalid_max_lines:
+            errors.append(f"MARKDOWN_MAX_LINES에 잘못된 키: {invalid_max_lines}. 허용: {valid_max_lines_keys}")
 
         if errors:
-            print("⚠ 설정 검증 실패:")
+            print("설정 검증 실패:")
             for error in errors:
                 print(f"  - {error}")
             return False
 
-        print("✓ 설정 검증 통과")
+        print("설정 검증 통과")
         return True
 
     def get_db_path(self, db_type: str) -> str:

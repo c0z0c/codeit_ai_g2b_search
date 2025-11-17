@@ -1122,27 +1122,23 @@
         /* mermaid 컨테이너/글자/높이/간격 조정 (수정) */
         .mermaid {
             width: 100%;
-            /* max-width: 100%; */
-            /* margin: 0 auto 5px; */
-            font-size: 12px;
-            /* 높이를 고정하지 않고 내용에 따라 자동으로 조정 */
+            max-width: 80%; /* 다이어그램 너비를 화면의 80%로 제한 */
+            font-size: 14px; /* 글꼴 크기를 줄여 다이어그램 크기 축소 */
             display: block;
         }
 
         .mermaid svg {
             width: 100%;
-            /* width: 100% !important; */
-            max-width: 100%;
-            font-size: 12px;
-            /* height: auto !important; */ /* 고정 높이 제거하여 GitHub 렌더링과 유사하게 동작 */
+            max-width: 80%; /* SVG 크기 제한 */
+            font-size: 14px; /* SVG 글꼴 크기 축소 */
             display: block;
         }
 
         .mermaid.diagram-large svg {
             /* 필요시 큰 다이어그램에만 최대 높이 제한 적용 */
-            /* max-width: 100%; */
             width: 100%;
-            font-size: 12px;
+            max-width: 80%;
+            font-size: 14px;
             /* max-height: 1000px !important; */
         }
     </style>
@@ -1178,7 +1174,7 @@
                             rankSpacing: 120
                         },
                         theme: 'neutral', /* GitHub 스타일에 가까운 테마 */
-                        themeVariables: { fontSize: '24px' }
+                        themeVariables: { fontSize: '14px' }
                     });
                     mermaid.init(undefined, document.querySelectorAll('.mermaid'));
                 }
@@ -1213,7 +1209,7 @@
                         securityLevel: 'loose',
                         flowchart: { useMaxWidth: true, nodeSpacing: 60, rankSpacing: 120 },
                         theme: theme === 'dark' ? 'dark' : 'neutral',
-                        themeVariables: { fontSize: '24px' }
+                        themeVariables: { fontSize: '14px' }
                     });
                     document.querySelectorAll('.mermaid').forEach(el => {
                         // 이미 렌더링된 svg가 있다면 제거
@@ -1248,9 +1244,10 @@
         <div class="container">
             <div class="nav-bar">
                 <a href="{{ site.baseurl }}/">🏠 홈</a>
+                <a href="{{ site.baseurl }}/api/">📰 API</a>
                 <a href="{{ site.baseurl }}/협업일지/">‍🏫 협업일지</a>
                 <a href="{{ site.baseurl }}/회의록/">✅ 회의록</a>
-                <a href="{{ site.baseurl }}/doc/">🚧 doc</a>
+                <a href="{{ site.baseurl }}/doc/">🚧 DOC</a>
                 <a href="https://github.com/c0z0c/codeit_ai_g2b_search">📰 github</a>
                 <button id="theme-toggle" onclick="toggleTheme()">테마 전환</button>
             </div>
