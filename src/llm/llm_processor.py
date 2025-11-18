@@ -1,17 +1,38 @@
 # -*- coding: utf-8 -*-
 from typing import List, Dict, Any, Optional
+from getpass import getpass
+import os
 
 try:
+    # 1. OpenAI 통합 모듈
     from langchain_openai import ChatOpenAI
-    from langchain.prompts import PromptTemplate, ChatPromptTemplate
-    from langchain.chains import LLMChain
-    from langchain.memory import ConversationSummaryMemory
-    from langchain.chains.conversation.base import ConversationChain
+    
+    # 2. Core 모듈
     from langchain_core.chat_history import InMemoryChatMessageHistory
     from langchain_core.runnables.history import RunnableWithMessageHistory
-    LANGCHAIN_AVAILABLE = True
-except ImportError:
-    LANGCHAIN_AVAILABLE = False
+    from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+    
+    # 3. Memory 및 Chain 모듈 (0.2.x 버전의 표준 경로)
+    # ⭐️ .memory 대신 .chains에서 임포트 시도 (v0.2.x 구조)
+    from langchain.chains import ConversationChain 
+    
+    # ⭐️ Memory는 v0.2.x에서 langchain 패키지에 위치하지만, 경로 충돌 방지 위해 유지
+    # Note: v0.2.x에서 ConversationSummaryMemory는 langchain.memory에 있습니다.
+    from langchain.memory import ConversationSummaryMemory 
+    
+    # 4. 기타 Chain (LLMChain은 사용하지 않으므로 제거)
+    
+    LANGCHAIN_AVAILABLE_LLM = True
+    # LLMProcessor에서 사용하는 변수 명 통일
+    LANGCHAIN_AVAILABLE = LANGCHAIN_AVAILABLE_LLM 
+    
+except ImportError as e:
+    LANGCHAIN_AVAILABLE_LLM = False
+    LANGCHAIN_AVAILABLE = LANGCHAIN_AVAILABLE_LLM 
+    print("\n=============================================")
+    print(f"🚨 LangChain 임포트 실패! (LANGCHAIN_AVAILABLE_LLM = False)")
+    print(f"🚨 오류 메시지: {e}")
+    print("=============================================\n")
 
 from src.llm.prompts.prompt_loader import PromptLoader
 
@@ -53,6 +74,11 @@ class LLMProcessor:
 
         self.model_name = model or self.config.OPENAI_MODEL
         self.temperature = temperature if temperature is not None else self.config.OPENAI_TEMPERATURE
+
+        # 특정 모델의 temperature 제한 회피
+        if self.model_name == 'gpt-5-mini' and self.temperature == 0.0:
+            self.logger.warning("gpt-5-mini는 temperature=0.0을 지원하지 않습니다. 1.0으로 강제 변경합니다.")
+            self.temperature = 1.0
 
         # API 키 입력 처리
         if api_key is None or not api_key.strip():
@@ -109,41 +135,62 @@ class LLMProcessor:
             history_messages_key="history"
         )
 
-    def generate_response(self, query: str, retrieved_chunks: List[Dict[str, Any]]) -> str:
+    def generate_response(self, query: str, retrieved_chunks: Dict[str, Any]) -> str:
         """
-        검색된 청크를 컨텍스트로 활용하여 LLM 응답 생성 (OpenAI 직접 사용)
+        검색된 청크를 컨텍스트로 활용하여 LLM 응답 생성
 
         Args:
-            question: 사용자 질문
-            retrieved_chunks: search() 또는 search_page() 결과
-            api_key: OpenAI API 키 (옵션)
-            max_chunks: 최대 청크/페이지 수
-
+            query: 사용자 질문
+            retrieved_chunks: search() 또는 search_page() 결과 (Dict[str, Any] 또는 List[Dict[str, Any]])
+        
         Returns:
             str: LLM 응답
         """
         self.logger.info(f"LLM 응답 생성 시작: query='{query[:50]}...'")
 
-        # 컨텍스트 구성
-        context = self._build_context(retrieved_chunks, max_chunks)
-        if not context:
+        # max_chunks는 일반적으로 config에서 가져오거나 파라미터로 받아야 하지만, 
+        # 현재 코드에서는 정의되어 있지 않으므로 임시로 5를 사용하거나, 
+        # generate_response의 정의에서 max_chunks 파라미터를 제거합니다.
+        # 현재 호출 코드를 보니 max_chunks가 전달되지 않고 있으므로,
+        # self._build_context_from_... 메서드에서 None을 허용하도록 처리합니다.
+        max_chunks = 5  # 기본값 설정
+
+        # ⭐️⭐️⭐️ 컨텍스트 구성 로직 수정 ⭐️⭐️⭐️
+        
+        # 1. search_page() 결과인지 확인: 'pages' 키가 있고 딕셔너리 형태일 때
+        if isinstance(retrieved_chunks, dict) and 'pages' in retrieved_chunks:
+            # retrieved_chunks['pages']를 사용하여 _build_context_from_pages 호출
+            pages = retrieved_chunks.get('pages', [])
+            context = self._build_context_from_pages(pages, max_chunks)
+        
+        # 2. search() 결과인지 확인: 청크 리스트 형태일 때
+        elif isinstance(retrieved_chunks, list):
+            # retrieved_chunks 자체를 사용하여 _build_context_from_chunks 호출
+            context = self._build_context_from_chunks(retrieved_chunks, max_chunks)
+        
+        else:
+            self.logger.warning("검색 결과가 유효한 딕셔너리(pages 포함) 또는 리스트 형태가 아닙니다.")
+            context = self.config.NO_CONTEXT_MESSAGE
+        
+        # ⭐️⭐️⭐️ 컨텍스트 구성 로직 수정 끝 ⭐️⭐️⭐️
+
+
+        if not context or context == self.config.NO_CONTEXT_MESSAGE:
             self.logger.warning("검색 결과 없음")
             context = self.config.NO_CONTEXT_MESSAGE
         
         self.logger.debug(f"context size = {len(context)}")
 
-        # YAML 기반 프롬프트 템플릿 로드 (안전히 여러 후보 검사)
+        # YAML 기반 프롬프트 템플릿 로드 (기존 로직 유지)
         prompt_text = None
 
-        # 1) PromptLoader.templates 딕셔너리 우선 검사
+        # 1) PromptLoader.templates 딕셔너리 우선 검사 (기존 로직 유지)
         if hasattr(self.prompts, "templates") and isinstance(self.prompts.templates, dict):
-            # 흔히 쓰는 키 우선 검색
             for k in ("rag_prompt_template", "template", "default"):
                 v = self.prompts.templates.get(k)
                 if v:
                     prompt_text = v
                     break
-            # templates가 id -> dict 형태일 때 첫 항목에서 추출
             if not prompt_text:
                 first = next(iter(self.prompts.templates.values()), None)
                 if isinstance(first, dict):
@@ -151,24 +198,24 @@ class LLMProcessor:
                 elif isinstance(first, str):
                     prompt_text = first
 
-        # 2) load_template 메서드가 있으면 파일명으로 로드 시도
+        # 2) load_template 메서드가 있으면 파일명으로 로드 시도 (기존 로직 유지)
         if not prompt_text and hasattr(self.prompts, "load_template"):
             try:
-                # 프롬프트 템플릿 설정
                 tpl = self.prompts.load_template("prompt_temp_v1")
                 if isinstance(tpl, dict):
                     prompt_text = tpl.get("rag_prompt_template") or tpl.get("template") or tpl.get("default")
             except Exception:
                 pass
 
-        # 3) 설정 파일(fallback)
+        # 3) 설정 파일(fallback) (기존 로직 유지)
         prompt_text = prompt_text or getattr(self.config, "RAG_PROMPT_TEMPLATE", None)
 
         if not prompt_text:
             raise KeyError("'rag_prompt_template' 또는 사용 가능한 프롬프트 텍스트를 찾을 수 없습니다.")
 
-        prompt = ChatPromptTemplate.from_template(prompt_text)
-        chain = prompt | self.llm
+        # Note: ChatPromptTemplate.from_template을 사용하면 LangChain Chain을 통하지 않고 
+        # 바로 LLM을 호출할 때 메모리 이력이 반영되지 않을 수 있습니다. 
+        # 여기서는 ConversationChain을 사용하므로 그대로 둡니다.
         
         # ConversationChain을 통해 호출 (memory 반영)
         full_input = f"Context:\n{context}\n\nQuery:\n{query}"
@@ -178,7 +225,8 @@ class LLMProcessor:
                 config={"configurable": {"session_id": "default"}}
             )
             self.logger.info(f"LLM 응답 생성 완료")
-            return response["response"] if isinstance(response, dict) else str(response)
+            # LangChain RunnableWithMessageHistory의 결과는 일반적으로 딕셔너리 형태를 반환합니다.
+            return response["response"] if isinstance(response, dict) and "response" in response else str(response)
         except Exception as e:
             self.logger.error(f"응답 생성 중 오류 발생: {e}")
             return f"응답 생성 중 오류 발생: {e}"
