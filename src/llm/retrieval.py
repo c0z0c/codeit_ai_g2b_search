@@ -2,38 +2,29 @@
 from typing import List, Dict, Any, Optional
 
 try:
+    from langchain_core.documents import Document 
+except ImportError:
+    from langchain.schema import Document
+# -------------------------------------------------------------
+
+try:
     from langchain_openai import OpenAIEmbeddings
-    from langchain.docstore.document import Document
+    # Document 제거
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
 
-from src.vectorstore.vector_store_manager import VectorStoreManager
+# VectorStoreManager 임포트
+from src.vectorstore.vector_store_manager import VectorStoreManager 
 from src.config import get_config
 from src.utils.logging_config import get_logger
 
 class Retrieval:
     """
     Retrieval 클래스
-
-    쿼리에 대한 유사 청크를 검색하는 기능을 제공합니다. 
-    VectorStoreManager를 통해 통합 FAISS 인덱스에서 유사도 기반 검색을 수행합니다.
-
-    Attributes:
-        config: 설정 객체 (Config)
-        embedding_model: 사용할 임베딩 모델 이름
-        vector_manager: VectorStoreManager 인스턴스
-        embeddings: LangChain OpenAI 임베딩 객체 (선택적)
     """
 
     def __init__(self, embedding_model: Optional[str] = None, config=None):
-        """
-        Retrieval 클래스 초기화
-
-        Args:
-            embedding_model: 사용할 임베딩 모델 이름 (기본값: Config에서 로드)
-            config: 설정 객체 (기본값: get_config() 호출)
-        """
         # Config 로드
         self.config = config or get_config()
 
@@ -68,45 +59,26 @@ class Retrieval:
         filter_metadata: Optional[Dict[str, Any]] = None,
         api_key: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """
-        쿼리에 대한 유사 청크 검색
+        
+        # Document 임포트 지연 삽입
+        try:
+            from langchain_core.documents import Document 
+        except ImportError:
+            from langchain.schema import Document
 
-        Args:
-            query: 검색 쿼리 문자열
-            top_k: 상위 k개 검색 (기본값: Config의 TOP_K_SUMMARY)
-            filter_metadata: 메타데이터 필터 (선택적, 예: {'file_hash': 'abc123'})
-            api_key: OpenAI API 키 (선택적)
-
-        Returns:
-            List[Dict[str, Any]]: 검색된 청크와 유사도 정보 리스트
-            각 항목 구조:
-            {
-                'text': str,              # 청크 텍스트
-                'file_hash': str,          # 파일 해시
-                'file_name': str,          # 파일명
-                'page_number': int,        # 페이지 번호
-                'chunk_index': int,        # 청크 인덱스
-                'chunk_hash': str,         # 청크 해시
-                'distance': float,         # L2 거리 (작을수록 유사)
-                'created_at': str          # 생성 시각
-            }
-        """
         if not LANGCHAIN_AVAILABLE:
             self.logger.error("LangChain이 설치되지 않았습니다.")
             return []
 
-        # top_k 기본값 설정
         if top_k is None:
             top_k = self.config.TOP_K_SUMMARY
 
         self.logger.info(f"검색 시작: query='{query[:50]}...', top_k={top_k}")
 
-        # API 키 설정
         if api_key:
             import os
             os.environ['OPENAI_API_KEY'] = api_key
 
-        # VectorStoreManager를 통한 검색
         try:
             search_results = self.vector_manager.search(
                 query=query,
@@ -118,25 +90,14 @@ class Retrieval:
             self.logger.error(f"검색 실패: {e}")
             return []
 
-        # 결과 변환: List[Dict[str, Any]]
         results = []
         for doc, distance in search_results:
-            # 메타데이터 전체 복사
             result = dict(doc.metadata)
-            
-            # 필수 필드 추가/덮어쓰기
             result.update({
                 'text': doc.page_content,
                 'distance': float(distance)
             })
-            
             results.append(result)
-            
-            self.logger.debug(
-                f"  - 청크 {result.get('chunk_index', 0)}: distance={distance:.4f}, "
-                f"file={result.get('file_name', 'unknown')}, "
-                f"page={result.get('start_page', 0)}-{result.get('end_page', 0)}"
-            )
 
         self.logger.info(f"검색 완료: {len(results)}개 청크 반환")
         return results
@@ -170,6 +131,13 @@ class Retrieval:
                 'pages': List[Dict[str, Any]]
             }
         """
+
+        # Document 임포트 지연 삽입
+        try:
+            from langchain_core.documents import Document 
+        except ImportError:
+            from langchain.schema import Document
+
         # sort_by 검증
         if sort_by not in ["score", "page"]:
             self.logger.warning(f"잘못된 sort_by 값: {sort_by}, 기본값 'score' 사용")
