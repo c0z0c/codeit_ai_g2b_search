@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 class PromptManager:
     def __init__(self, prompt_dir: str = "src/llm/prompts", env: str = "prod"):
         """

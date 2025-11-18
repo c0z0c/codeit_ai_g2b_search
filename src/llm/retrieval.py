@@ -2,7 +2,7 @@
 from typing import List, Dict, Any, Optional
 
 try:
-    from langchain_core.documents import Document 
+    from langchain_core.documents import Document
 except ImportError:
     from langchain.schema import Document
 # -------------------------------------------------------------
