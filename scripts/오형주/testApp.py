@@ -9,6 +9,11 @@ import os
 from openai import OpenAI
 from pathlib import Path
 import sys
+from dotenv import load_dotenv
+
+# .env 파일 로드
+env_path = Path(__file__).resolve().parents[2] / '.env'
+load_dotenv(env_path)
 # sys.path.insert(0, str(Path(__file__).parent))
 # 프로젝트 루트를 sys.path에 추가 (scripts/오형주 → 프로젝트 루트로 이동)
 project_root = Path(__file__).resolve().parents[2]  # scripts/오형주 → 2단계 상위 = 프로젝트 루트
@@ -42,8 +47,9 @@ if 'session_id' not in st.session_state:
     st.session_state.session_id = None
 if 'messages' not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": "안녕하세요! 저는 AI 채팅 어시스턴트입니다. 무엇을 도와드릴까요?"}]
+# .env에서 읽은 API 키를 기본값으로 설정
 if 'api_key' not in st.session_state:
-    st.session_state.api_key = config.OPENAI_API_KEY or os.getenv('OPENAI_API_KEY', '')
+    st.session_state.api_key = os.getenv('OPENAI_API_KEY', '')
 
 # DB 초기화
 @st.cache_resource
@@ -64,11 +70,14 @@ with st.sidebar:
     st.title("설정 및 세션")
     
     # 2. OpenAI API Key 입력 위젯
-    openai_api_key = st.text_input("OpenAI API Key를 입력하세요", type="password")
+    openai_api_key = st.text_input("OpenAI API Key를 입력하세요", 
+                                    value=st.session_state.api_key, 
+                                    type="password")
     
     # API 키가 유효하게 입력되었는지 확인하는 플래그
     api_key_valid = False 
     if openai_api_key:
+        st.session_state.api_key = openai_api_key
         st.success("API Key 입력 완료!")
         api_key_valid = True 
     else:
