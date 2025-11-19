@@ -506,3 +506,31 @@ tbody tr:hover {
 
 .cursor-pointer { cursor: pointer; }
 .user-select-none { user-select: none; }
+
+/* ==================== 채팅 입력 위 오버레이 selectbox ==================== */
+/* 메인 컨테이너의 selectbox를 채팅 입력 박스 위에 겹쳐 보이게 합니다. */
+.block-container {
+    position: relative; /* 오버레이의 기준이 되도록 설정 */
+}
+
+.block-container .stSelectbox {
+    position: absolute !important;
+    /* 메시지 전송 버튼 왼쪽(하단 우측)으로 위치 조정: 전송 버튼 왼쪽에 붙도록 값 조절 */
+    right: 0px !important; /* 전송 버튼에서 왼쪽으로 약간 띄운 위치 */
+    top: 300px !important; /* 바닥에서 약간 올라오게 설정 */
+    width: 140px !important; /* 작게 유지 */
+    font-size: 0.95rem !important;
+    z-index: 120 !important;
+    background: rgba(255,255,255,0.98);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.14);
+    border-radius: 12px !important;
+    padding: 6px !important;
+}
+
+@media (max-width: 768px) {
+    .block-container .stSelectbox {
+        position: static !important;
+        width: 100% !important;
+        box-shadow: none !important;
+    }
+}

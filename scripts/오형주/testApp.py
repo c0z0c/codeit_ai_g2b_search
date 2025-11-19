@@ -51,6 +51,15 @@ if 'messages' not in st.session_state:
 if 'api_key' not in st.session_state:
     st.session_state.api_key = os.getenv('OPENAI_API_KEY', '')
 
+# 현재 선택된 세션 표시명을 위한 초기화
+# Streamlit의 session_state는 명시적 초기화가 필요합니다.
+if 'selected_session' not in st.session_state:
+    st.session_state.selected_session = "새 세션"
+
+# 현재 사용 중인 언어모델 (초기값: .env 또는 gpt-5)
+if 'current_model' not in st.session_state:
+    st.session_state.current_model = os.getenv('OPENAI_MODEL', 'gpt-5')
+
 # DB 초기화
 @st.cache_resource
 def init_dbs():
@@ -85,12 +94,23 @@ with st.sidebar:
     
     st.markdown("---") 
 
+    # 언어모델 변경 드롭다운
+    #model_options = ["gpt-5", "gpt-5-nano", "gpt-5-mini"]
+    # 현재 세션 상태 모델이 옵션에 있으면 해당 인덱스, 아니면 기본 인덱스 1(gpt-5)
+    #try:
+    #    default_idx = model_options.index(st.session_state.current_model)
+    #except Exception:
+    #    default_idx = 0
+    #selected = st.selectbox("언어모델 변경", options=model_options, index=default_idx, key="select_model")
+    # 선택 시 세션 상태 업데이트
+    #if selected != st.session_state.current_model:
+    #    st.session_state.current_model = selected
 
     # 데이터 통계
     st.subheader("데이터 통계")
     try:
         doc_stats = dbs['docs'].get_document_stats()
-        embedding_stats = dbs['embeddings'].get_embedding_stats()
+        #embedding_stats = dbs['embeddings'].get_embedding_stats() 데이터 통계 로드 실패로 임시주석처리
         col1, col2 = st.columns(2)
         with col1:
             st.metric("문서 수", f"{doc_stats.get('total_files', 0)}")
@@ -147,6 +167,17 @@ with st.sidebar:
     # 5 & 6. 세션 관리
     st.title("채팅 세션 관리")
     
+    model_options = ["gpt-5", "gpt-5-nano", "gpt-5-mini"]
+    selected_model = st.selectbox(
+    "언어모델 선택",
+    options=model_options,
+    index=model_options.index(st.session_state.get('current_model', 'gpt-5')),
+    key="chat_model_select_below",
+    )
+    if selected_model != st.session_state.get('current_model'):
+        st.session_state.current_model = selected_model
+        st.info(f"언어모델이 '{selected_model}'(으)로 변경되었습니다.")
+
     # 새로운 세션 생성
     if st.button("새 세션 생성", use_container_width=True, key="btn_new_session"):
         session_name = "새 채팅 세션"
@@ -173,8 +204,8 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # 9. 사용자 입력 텍스트 박스 & 10. 전송 버튼 구현
-if prompt := st.chat_input("여기에 메시지를 입력하세요...", disabled=not api_key_valid):
 # 에러시 api 확인하는 코드 추가
+if prompt := st.chat_input("여기에 메시지를 입력하세요...", disabled=not api_key_valid):
 
     # 1. 사용자 입력 저장 및 화면에 표시
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -197,8 +228,10 @@ if prompt := st.chat_input("여기에 메시지를 입력하세요...", disabled
             # 2-3. AI 응답 생성 (스트리밍 사용)
             with st.chat_message("assistant"):
                 # chat.completions.create 호출
+                # 모델은 세션 상태에서 가져오며, 없으면 .env 기본값 사용
+                model_to_use = st.session_state.get('current_model') or os.getenv('OPENAI_MODEL', 'gpt-5-nano')
                 stream = client.chat.completions.create(
-                    model="gpt-3.5-turbo", # 이 버전이 개발 초기 단계나 소규모 앱에서 비용 효율성으로 사용됨
+                    model=model_to_use, # 사용가능모델: gpt-5, gpt-5-nano, gpt-5-mini
                     messages=messages_for_api,
                     stream=True,
                 )
@@ -215,6 +248,19 @@ if prompt := st.chat_input("여기에 메시지를 입력하세요...", disabled
 
     else:
         st.error("OpenAI API Key를 먼저 입력해주세요.")
+    
+# 입력창 위에 언어모델 선택 selectbox 추가
+# 위치변동으로 추후 수정하고 일단 채팅 세션 관리 사이드바에 배치함
+#model_options = ["gpt-5", "gpt-5-nano", "gpt-5-mini"]
+#selected_model = st.selectbox(
+#    "언어모델 선택",
+#    options=model_options,
+#    index=model_options.index(st.session_state.get('current_model', 'gpt-5')),
+#    key="chat_model_select_below",
+#)
+#if selected_model != st.session_state.get('current_model'):
+#    st.session_state.current_model = selected_model
+#    st.info(f"언어모델이 '{selected_model}'(으)로 변경되었습니다.")
     
 # 실행 예시: Streamlit을 실행하면 왼쪽에 "설정 및 세션" 제목이 있는 사이드바가 보입니다.
 # ------- 사이드바  끝 구간 -------
