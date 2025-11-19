@@ -29,3 +29,6 @@ seaborn==0.13.2  # 버전 업데이트
 
 # Streamlit 웹 애플리케이션
 streamlit==1.40.1
+
+# 추가된 패키지
+helper-hwp==0.5.1
