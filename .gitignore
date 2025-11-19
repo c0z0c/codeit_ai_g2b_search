@@ -102,3 +102,5 @@ Thumbs.db
 *.temp
 tmp/
 temp/
+/scripts/basic-miktex-24.1-x64.exe
+/scripts/wkhtmltox-0.12.6-1.msvc2015-win64.exe
