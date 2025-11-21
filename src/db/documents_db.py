@@ -7,6 +7,7 @@ from src.utils.logging_config import get_logger
 
 logger = get_logger('[DOCDB]')
 
+
 class DocumentsDB:
     """
     마크다운 문서 데이터베이스 관리 클래스 (분할 저장 지원)
@@ -54,14 +55,14 @@ class DocumentsDB:
             - text_content: 변환된 파일의 텍스트 콘텐츠 (텍스트, 마크다운, HTML 등)
             - created_at: 레코드 생성 시각 (기본값: 현재 시각)
             - updated_at: 레코드 수정 시각 (기본값: 현재 시각)
-        
+
         - 인덱스:
             - idx_file_name: file_name 컬럼에 대한 인덱스
             - idx_created_at: created_at 컬럼에 대한 시간 기반 검색 최적화를 위한 인덱스
-        """        
+        """
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            
+
             # TB_DOCUMENTS 테이블 생성 (chunk_index 추가)
             # file_hash와 chunk_index를 합쳐서 Primary Key로 설정
             cursor.execute("""
@@ -77,7 +78,7 @@ class DocumentsDB:
                     PRIMARY KEY (file_hash, chunk_index)
                 )
             """)
-            
+
             # 트리거 생성 (업데이트 시 시간 갱신)
             cursor.execute("""
                 CREATE TRIGGER IF NOT EXISTS update_updated_at
@@ -100,11 +101,11 @@ class DocumentsDB:
             #     CREATE INDEX IF NOT EXISTS idx_created_at
             #     ON TB_DOCUMENTS (created_at)
             # """)
-            
+
             # PRAGMA user_version을 사용한 DB 버전 관리
             cursor.execute("PRAGMA user_version")
             db_version = cursor.fetchone()[0]
-            
+
             if db_version == 0:
                 # 초기화: user_version이 0이면 현재 버전으로 설정
                 cursor.execute(f"PRAGMA user_version = {self.USER_VERSION}")
@@ -120,33 +121,33 @@ class DocumentsDB:
         """
         데이터베이스 마이그레이션 로직
         추후 버전 업그레이드 시 필요한 마이그레이션 로직을 여기에 구현
-        
+
         Args:
             old_version (int): 기존 데이터베이스 버전
             new_version (int): 새로운 데이터베이스 버전
         """
-        #with self._get_connection() as conn:
-            #cursor = conn.cursor()
-            #self.logger.info(f"데이터베이스 마이그레이션 시작: {old_version} → {new_version}")
-            
-            # if old_version == 1 and 2 == new_version:
-                
-            #     # 버전 2로 마이그레이션
-            #     cursor.execute("ALTER TABLE TB_DOCUMENTS ADD COLUMN new_column TEXT")
-            #     self.logger.info("버전 2로 마이그레이션 완료")
-            # 추가 마이그레이션 로직 작성 가능
-            
-            # 최종적으로 user_version 업데이트
-            # cursor.execute(f"PRAGMA user_version = {new_version}")
-            # conn.commit()
-            #self.logger.info(f"데이터베이스 마이그레이션 완료: {new_version}")            
+        # with self._get_connection() as conn:
+        #     cursor = conn.cursor()
+        #     self.logger.info(f"데이터베이스 마이그레이션 시작: {old_version} → {new_version}")
+
+        #     if old_version == 1 and 2 == new_version:
+
+        #         # 버전 2로 마이그레이션
+        #         cursor.execute("ALTER TABLE TB_DOCUMENTS ADD COLUMN new_column TEXT")
+        #         self.logger.info("버전 2로 마이그레이션 완료")
+        #     # 추가 마이그레이션 로직 작성 가능
+
+        #     # 최종적으로 user_version 업데이트
+        #     cursor.execute(f"PRAGMA user_version = {new_version}")
+        #     conn.commit()
+        #     self.logger.info(f"데이터베이스 마이그레이션 완료: {new_version}")
         raise NotImplementedError("마이그레이션 로직이 구현되지 않았습니다.")
 
-    def insert_text_content(self, 
+    def insert_text_content(self,
                             file_name: str = "",
-                            file_hash: str = "", 
-                            total_pages: Optional[int] = 0, 
-                            file_size: Optional[int] = 0, 
+                            file_hash: str = "",
+                            total_pages: Optional[int] = 0,
+                            file_size: Optional[int] = 0,
                             text_content: Optional[str] = "",
                             chunk_index: Optional[int] = 0) -> bool:
         """
@@ -177,7 +178,7 @@ class DocumentsDB:
             """, (file_hash, chunk_index, file_name, total_pages, file_size, text_content, datetime.now()))
             conn.commit()
             return True
-        
+
     def get_document_by_hash(self, file_hash: str) -> Optional[Dict[str, Any]]:
         """
         파일 해시값으로 문서 정보 조회
@@ -188,37 +189,37 @@ class DocumentsDB:
 
         Returns:
             Optional[Dict[str, Any]]: 문서 정보 (없으면 None 반환)
-        """        
+        """
         with self._get_connection() as conn:
             cursor = conn.cursor()
             # chunk_index 순서대로 정렬하여 가져옴
             cursor.execute("""
-                SELECT * FROM TB_DOCUMENTS 
-                WHERE file_hash = ? 
+                SELECT * FROM TB_DOCUMENTS
+                WHERE file_hash = ?
                 ORDER BY chunk_index ASC
             """, (file_hash,))
-            
+
             rows = cursor.fetchall()
             if not rows:
                 return None
-            
+
             # 첫 번째 조각의 메타데이터를 사용
             result = dict(rows[0])
-            
+
             # 모든 조각의 text_content를 합침
             full_text = "".join([row['text_content'] for row in rows if row['text_content']])
             result['text_content'] = full_text
-            
+
             # 메타데이터 중 chunk_index는 제거 (합쳐진 데이터이므로)
             if 'chunk_index' in result:
                 del result['chunk_index']
-                
+
             return result
 
     def get_documents_all(self) -> List[Dict[str, Any]]:
         """
         데이터베이스의 모든 문서 조회
-        
+
         Returns:
             List[Dict[str, Any]]: 문서 리스트 (file_name, file_hash, text_content 등)
         """
@@ -230,10 +231,10 @@ class DocumentsDB:
                 GROUP BY file_hash
                 ORDER BY updated_at DESC
             """)
-            
+
             columns = [desc[0] for desc in cursor.description]
             results = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        
+
         return results
 
     def get_document_stats(self) -> Dict[str, Any]:
@@ -253,7 +254,7 @@ class DocumentsDB:
             # 파일 수는 고유한 file_hash 개수
             cursor.execute('SELECT COUNT(DISTINCT file_hash) FROM TB_DOCUMENTS')
             total_files = cursor.fetchone()[0]
-            
+
             # 페이지 수, 사이즈는 중복 계산을 피하기 위해 서브쿼리 사용
             cursor.execute("""
                 SELECT SUM(total_pages), SUM(file_size)
@@ -269,37 +270,37 @@ class DocumentsDB:
                 'total_size_bytes': total_size,
                 'total_size_mb': round(total_size / (1024 * 1024), 2),
             }
-            
-    def search_documents(self, 
-                         search_term: str, 
+
+    def search_documents(self,
+                         search_term: str,
                          search_type: str = 'auto') -> List[Dict[str, Any]]:
         """
         파일명 또는 file_hash로 문서 검색
-        
+
         Args:
             search_term (str): 검색어 (파일명 또는 file_hash)
             search_type (str): 검색 타입
                 - 'auto': file_hash 형식(64자 hex)이면 hash 검색, 아니면 filename 검색
                 - 'filename': file_name LIKE 검색
                 - 'hash': file_hash 완전 일치 검색
-        
+
         Returns:
             List[Dict[str, Any]]: 검색 결과 리스트
-        
+
         Example:
             >>> # file_hash로 검색
             >>> results = db.search_documents("abc123def456...")
-            >>> 
+            >>>
             >>> # 파일명으로 검색
             >>> results = db.search_documents("공고문", search_type='filename')
-            >>> 
+            >>>
             >>> # 자동 판별
             >>> results = db.search_documents("test.pdf", search_type='auto')
         """
         if not search_term:
             self.logger.warning("검색어가 비어있습니다.")
             return []
-        
+
         if search_type == 'auto':
             if len(search_term) == 64 and all(c in '0123456789abcdefABCDEF' for c in search_term):
                 search_type = 'hash'
@@ -318,9 +319,9 @@ class DocumentsDB:
         else:
             self.logger.error(f"지원하지 않는 search_type: {search_type}")
             return []
-        
+
         results = self.execute_query(query, params)
-        self.logger.debug(f"검색 완료: {len(results)}건 ({search_type} 모드, 검색어: {search_term})")        
+        self.logger.debug(f"검색 완료: {len(results)}건 ({search_type} 모드, 검색어: {search_term})")
         # 검색 목록 결과이므로 전체 텍스트 합치기는 여기서 수행하지 않고(성능상),
         # 상세 조회(get_document_by_hash) 시 수행하는 것이 일반적입니다.
         return results
@@ -328,14 +329,14 @@ class DocumentsDB:
     def execute_query(self, query: str, params: Optional[tuple] = None) -> List[Dict[str, Any]]:
         """
         SELECT 쿼리를 실행하고 결과를 반환
-        
+
         Args:
             query (str): 실행할 SQL 쿼리
             params (Optional[tuple]): 쿼리 파라미터 (기본값: None)
-        
+
         Returns:
             List[Dict[str, Any]]: 쿼리 결과 (각 행이 딕셔너리)
-        
+
         Example:
             >>> results = db.execute_query("SELECT * FROM TB_DOCUMENTS WHERE file_hash = ?", ("abc123",))
             >>> for row in results:
@@ -354,15 +355,11 @@ class DocumentsDB:
             self.logger.error(f"쿼리 실행 오류: {e}")
             return []
 
-    
-
     def summary(self) -> None:
         """
         데이터베이스의 모든 테이블 요약 정보 출력.
-        
-        각 테이블의 컬럼명과 레코드 수를 로거로 출력합니다.
 
-        (변경점) 
+        각 테이블의 컬럼명과 레코드 수를 로거로 출력합니다.
         """
         try:
             # 테이블 목록 조회
@@ -373,31 +370,32 @@ class DocumentsDB:
             if not tables:
                 self.logger.info("데이터베이스에 테이블이 없습니다.")
                 return
-                
+
             self.logger.info("=" * 80)
             self.logger.info(f"데이터베이스: {self.db_path}")
             self.logger.info(f"총 테이블 수: {len(tables)}")
             self.logger.info("=" * 80)
-            
+
             for table_info in tables:
                 table_name = table_info['name']
 
                 # 컬럼 정보
                 columns = self.execute_query(f"PRAGMA table_info({table_name})")
                 column_names = [col['name'] for col in columns]
-                
+
                 # 레코드 수
                 count_result = self.execute_query(f"SELECT COUNT(*) as cnt FROM {table_name}")
                 row_count = count_result[0]['cnt'] if count_result else 0
-                
+
                 self.logger.info(f"테이블: {table_name}")
                 self.logger.info(f"  - 컬럼 수: {len(column_names)}")
                 self.logger.info(f"  - 컬럼명: {', '.join(column_names)}")
                 self.logger.info(f"  - 레코드 수: {row_count}")
                 self.logger.info("-" * 80)
-            
+
         except Exception as e:
             self.logger.error(f"summary() 실행 중 오류: {e}")
+
 
 logger.info("DocumentsDB 모듈이 로드되었습니다.")
 if __name__ == "__main__":
