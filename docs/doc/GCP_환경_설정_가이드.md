@@ -197,6 +197,15 @@ gcloud compute firewall-rules list --project=sprint-ai-chunk2-03
 
 # VM 태그 확인
 gcloud compute instances describe codeit-ai-g2b-search --zone=us-central1-c --format="get(tags.items)"
+
+
+gcloud compute instances add-tags codeit-ai-g2b-search --zone=us-central1-c --project=sprint-ai-chunk2-03 --tags=streamlit-server
+gcloud compute firewall-rules create allow-streamlit-8501-new --project=sprint-ai-chunk2-03 --network=default --action=ALLOW --rules=tcp:8501 --source-ranges=0.0.0.0/0 --target-tags=streamlit-server --description="Allow Streamlit traffic on TCP port 8501 using new tag"
+
+gcloud compute firewall-rules create allow-http-streamlit-80 --project=sprint-ai-chunk2-03 --network=default --action=ALLOW --rules=tcp:80 --source-ranges=0.0.0.0/0 --target-tags=streamlit-server --description="Allow HTTP traffic on TCP port 80 for Streamlit server"
+
+sudo -E /opt/miniconda3/envs/py310_openai/bin/python -m streamlit run app.py --server.port 80
+
 ```
 
 ---
