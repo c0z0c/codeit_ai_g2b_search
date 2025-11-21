@@ -507,6 +507,24 @@ tbody tr:hover {
 .cursor-pointer { cursor: pointer; }
 .user-select-none { user-select: none; }
 
+/* ==================== 세션 목록 호버 효과 ==================== */
+.session-item {
+    position: relative;
+    margin-bottom: 0.5rem;
+    transition: var(--transition);
+}
+
+/* 삭제 버튼은 기본적으로 투명하게 */
+.session-item [data-testid="column"]:last-child button {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+/* 세션 항목에 마우스 호버 시 삭제 버튼 표시 */
+.session-item:hover [data-testid="column"]:last-child button {
+    opacity: 1;
+}
+
 /* ==================== 채팅 입력 위 오버레이 selectbox ==================== */
 /* 메인 컨테이너의 selectbox를 채팅 입력 박스 위에 겹쳐 보이게 합니다. */
 .block-container {

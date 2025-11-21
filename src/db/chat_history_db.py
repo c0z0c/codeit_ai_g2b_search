@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
+
 class ChatHistoryDB:
     """
     ChatHistoryDB는 SQLite를 사용하여 채팅 세션 및 메시지를 관리하는 데이터베이스를 제공합니다.
@@ -61,7 +62,7 @@ class ChatHistoryDB:
             """)
             conn.commit()
 
-    def create_session(self, session_name=None) -> str:
+    def create_session(self, session_name: Optional[str] = None) -> str:
         """
         새로운 채팅 세션을 생성.
         :param session_name: 세션 이름 (기본값: 현재 시간 기반 자동 생성)
@@ -77,9 +78,10 @@ class ChatHistoryDB:
                 VALUES (?, ?)
             """, (session_id, session_name))
             conn.commit()
-            return session_id
+        return session_id
 
-    def add_message(self, session_id: str, role: str, content: str, retrieved_chunks: Optional[List[Dict[str, Any]]] = None) -> int:
+    def add_message(self, session_id: str, role: str, content: str, 
+                    retrieved_chunks: Optional[List[Dict[str, Any]]] = None) -> int:
         """
         특정 세션에 메시지를 추가.
         :param session_id: 메시지를 추가할 세션 ID
@@ -106,6 +108,33 @@ class ChatHistoryDB:
             conn.commit()
             return cursor.lastrowid
 
+    def list_sessions(self) -> List[Dict[str, Any]]:
+        """
+        모든 세션 목록을 반환 (session_id, session_name, created_at, updated_at, is_active)
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT session_id, session_name, created_at, updated_at, is_active
+                FROM chat_sessions
+                ORDER BY updated_at DESC
+            """)
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_session_messages(self, session_id: str) -> List[Dict[str, Any]]:
+        """
+        특정 세션의 모든 메시지 목록을 반환
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT role, content, timestamp
+                FROM chat_messages
+                WHERE session_id = ?
+                ORDER BY timestamp ASC, message_id ASC
+            """, (session_id,))
+            return [dict(row) for row in cursor.fetchall()]
+
     def get_chat_stats(self) -> Dict[str, int]:
         """
         채팅 데이터베이스의 통계 정보를 반환.
@@ -128,5 +157,22 @@ class ChatHistoryDB:
                 'active_sessions': active_sessions,
                 'total_messages': total_messages,
                 'user_messages': user_messages,
-                'assistant_messages': assistant_messages,
+                'assistant_messages': assistant_messages
             }
+
+    def delete_session(self, session_id: str) -> bool:
+        """
+        특정 세션과 관련된 모든 메시지를 삭제.
+        :param session_id: 삭제할 세션 ID
+        :return: 삭제 성공 여부
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                # 외래 키 제약으로 인해 메시지가 자동 삭제됨 (ON DELETE CASCADE)
+                cursor.execute("DELETE FROM chat_sessions WHERE session_id = ?", (session_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"세션 삭제 중 오류 발생: {e}")
+            return False
