@@ -216,6 +216,18 @@ class EmbeddingProcessor:
         text = re.sub(r'\n{3,}', '\n\n', text)
         text = re.sub(r'[ \t]{2,}', ' ', text) 
         
+        # 4-1. 빈 테이블 행 제거 (파이프만 있고 내용 없는 행)
+        # empty_row_count = len(re.findall(r'^\|[\|\s]*\|$', text, flags=re.MULTILINE))
+        text = re.sub(r'^\|[\|\s]*\|$', '', text, flags=re.MULTILINE)
+        # if empty_row_count > 0:
+        #     self.logger.debug(f"빈 테이블 행 제거: {empty_row_count}개")
+        
+        # 4-2. 목차 구분선 축약 (·····················... → ···)
+        # dot_count_before = len(re.findall(r'·{4,}', text))
+        text = re.sub(r'·{4,}', '···', text)
+        # if dot_count_before > 0:
+        #     self.logger.debug(f"목차 구분선 축약: {dot_count_before}개 패턴 변환")
+        
         # 5. 복원 (역순: 나중에 보호한 것부터 복원하여 중첩 방지)
         # 먼저 블록 복원 (코드, 수식)
         for placeholder in sorted(protected_blocks.keys(), reverse=True):
