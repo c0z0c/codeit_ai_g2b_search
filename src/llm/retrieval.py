@@ -59,6 +59,52 @@ class Retrieval:
         filter_metadata: Optional[Dict[str, Any]] = None,
         api_key: Optional[str] = None
     ) -> List[Dict[str, Any]]:
+        """
+        쿼리에 대한 임베딩 단위 검색
+
+        Args:
+            query: 검색 쿼리 문자열
+            top_k: 상위 k개 검색 (기본값: Config의 TOP_K_SUMMARY)
+            filter_metadata: 메타데이터 필터 (선택적)
+            api_key: OpenAI API 키 (선택적)
+            page_window: 페이지 확장 범위 (기본값: 1)
+            sort_by: 정렬 기준 ("score" 또는 "page", 기본값: "score")
+
+        메타데이터는 다음과 같습니다:
+            - file_hash (str): 처리 중인 파일의 해시 값
+            - file_name (str): 처리 중인 파일의 이름
+            - start_page (int): 청크가 시작된 페이지 번호
+            - end_page (int): 청크가 끝난 페이지 번호
+            - chunk_type (str): 청크 유형 ('split', 'merged', 'single')
+            - chunk_index (int): 청크의 인덱스 번호
+            - embedding_config_hash (str): 파일 및 설정을 통합한 해시 값
+            - chunk_hash (str): 청크 내용 기반의 해시 값
+            - config_chunk_size (int): 청크 크기 설정 값
+            - config_chunk_overlap (int): 청크 간 중첩 크기 설정 값
+            - config_chunking_mode (str): 청킹 모드 설정 값
+            - config_chunk_separators (str): 청킹 시 사용된 구분자 설정 값 (JSON 형식)
+            - config_markdown_max_lines (str): 마크다운 블록별 최대 라인 수 설정 값 (JSON 형식)
+            - embedding_version (str): 사용된 임베딩 모델 버전
+            - created_at (str): 청크 생성 시각 (ISO 형식)
+            
+            example           
+            metadata = {
+                'file_hash': file_hash,
+                'file_name': file_name,
+                'start_page': buffer_pages[0],
+                'end_page': buffer_pages[-1],
+                'created_at': datetime.now().isoformat()
+            }            
+
+        Returns:
+            Dict[str, Any]:
+            {
+                'best_page': Dict[str, Any],
+                'page_scores': Dict[Tuple[str, int], float],
+                'file_names': List[str],
+                'pages': List[Dict[str, Any]]
+            }
+        """
         
         # Document 임포트 지연 삽입
         try:
@@ -121,6 +167,32 @@ class Retrieval:
             api_key: OpenAI API 키 (선택적)
             page_window: 페이지 확장 범위 (기본값: 1)
             sort_by: 정렬 기준 ("score" 또는 "page", 기본값: "score")
+
+        메타데이터는 다음과 같습니다:
+            - file_hash (str): 처리 중인 파일의 해시 값
+            - file_name (str): 처리 중인 파일의 이름
+            - start_page (int): 청크가 시작된 페이지 번호
+            - end_page (int): 청크가 끝난 페이지 번호
+            - chunk_type (str): 청크 유형 ('split', 'merged', 'single')
+            - chunk_index (int): 청크의 인덱스 번호
+            - embedding_config_hash (str): 파일 및 설정을 통합한 해시 값
+            - chunk_hash (str): 청크 내용 기반의 해시 값
+            - config_chunk_size (int): 청크 크기 설정 값
+            - config_chunk_overlap (int): 청크 간 중첩 크기 설정 값
+            - config_chunking_mode (str): 청킹 모드 설정 값
+            - config_chunk_separators (str): 청킹 시 사용된 구분자 설정 값 (JSON 형식)
+            - config_markdown_max_lines (str): 마크다운 블록별 최대 라인 수 설정 값 (JSON 형식)
+            - embedding_version (str): 사용된 임베딩 모델 버전
+            - created_at (str): 청크 생성 시각 (ISO 형식)
+
+            example           
+            metadata = {
+                'file_hash': file_hash,
+                'file_name': file_name,
+                'start_page': buffer_pages[0],
+                'end_page': buffer_pages[-1],
+                'created_at': datetime.now().isoformat()
+            }            
 
         Returns:
             Dict[str, Any]:

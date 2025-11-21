@@ -43,71 +43,6 @@ class LLMProcessor:
         
         self.logger.info(f"LLMProcessor 초기화 (model={self.model_name}, temperature={self.temperature})")
 
-    def generate_response(
-        self,
-        question: str,
-        retrieved_chunks: Any,
-        api_key: Optional[str] = None,
-        max_chunks: Optional[int] = None
-    ) -> str:
-        """
-        검색된 청크를 컨텍스트로 활용하여 LLM 응답 생성 (OpenAI 직접 사용)
-
-        Args:
-            question: 사용자 질문
-            retrieved_chunks: search() 또는 search_page() 결과
-            api_key: OpenAI API 키 (옵션)
-            max_chunks: 최대 청크/페이지 수
-
-        Returns:
-            str: LLM 응답
-        """
-        # API 키 설정
-        effective_api_key = api_key or self.config.OPENAI_API_KEY
-        if not effective_api_key:
-            self.logger.error("OpenAI API 키 미설정")
-            return "API 키가 설정되지 않았습니다."
-
-        # 컨텍스트 구성
-        context = self._build_context(retrieved_chunks, max_chunks)
-        if not context:
-            self.logger.warning("검색 결과 없음")
-            context = self.config.NO_CONTEXT_MESSAGE
-        
-        self.logger.debug(f"context size = {len(context)}")
-
-        # 프롬프트 템플릿 적용
-        template = self.config.RAG_PROMPT_TEMPLATE
-        user_message = template.format(context=context, question=question)
-
-        # OpenAI 클라이언트 생성
-        client = OpenAI(api_key=effective_api_key)
-
-        # 모델별 파라미터 설정
-        params: Dict[str, Any] = {
-            "model": self.model_name,
-            "messages": [{"role": "user", "content": user_message}]
-        }
-
-        if self.model_name.startswith(("gpt-5", "gpt-4.1", "o1")):
-            params["max_completion_tokens"] = 50000
-            self.logger.debug(f"모델 {self.model_name}: temperature 제외, max_completion_tokens 사용")
-        else:
-            params["temperature"] = self.temperature
-            params["max_tokens"] = 50000
-            self.logger.debug(f"모델 {self.model_name}: temperature={self.temperature} 사용")
-
-        # API 호출
-        try:
-            response = client.chat.completions.create(**params)
-            #answer = response.choices[0].message.content
-            self.logger.debug(f"LLM 응답 생성 완료")
-            return response
-            #return answer
-        except Exception as e:
-            self.logger.error(f"OpenAI API 호출 실패: {e}")
-            raise
-
 
     def _build_context(
         self,
@@ -193,3 +128,71 @@ class LLMProcessor:
         
         self.logger.debug(f"컨텍스트 구성 (search_page): {len(pages)}개 페이지")
         return "\n\n".join(context_parts)
+
+
+    def generate_response(
+        self,
+        question: str,
+        retrieved_chunks: Any,
+        api_key: Optional[str] = None,
+        max_chunks: Optional[int] = None
+    ) -> str:
+        """
+        검색된 청크를 컨텍스트로 활용하여 LLM 응답 생성 (OpenAI 직접 사용)
+
+        Args:
+            question: 사용자 질문
+            retrieved_chunks: search() 또는 search_page() 결과
+            api_key: OpenAI API 키 (옵션)
+            max_chunks: 최대 청크/페이지 수
+
+        Returns:
+            str: LLM 응답
+        """
+        # API 키 설정
+        effective_api_key = api_key or self.config.OPENAI_API_KEY
+        if not effective_api_key:
+            self.logger.error("OpenAI API 키 미설정")
+            return "API 키가 설정되지 않았습니다."
+
+        # 컨텍스트 구성
+        context = self._build_context(retrieved_chunks, max_chunks)
+        if not context:
+            self.logger.warning("검색 결과 없음")
+            context = self.config.NO_CONTEXT_MESSAGE
+        
+        self.logger.debug(f"context size = {len(context)}")
+
+        # 프롬프트 템플릿 적용
+        template = self.config.RAG_PROMPT_TEMPLATE
+        user_message = template.format(context=context, question=question)
+
+        # OpenAI 클라이언트 생성
+        client = OpenAI(api_key=effective_api_key)
+
+        # 모델별 파라미터 설정
+        params: Dict[str, Any] = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": user_message}]
+        }
+
+        if self.model_name.startswith(("gpt-5", "gpt-4.1", "o1")):
+            params["max_completion_tokens"] = 50000
+            self.logger.debug(f"모델 {self.model_name}: temperature 제외, max_completion_tokens 사용")
+        else:
+            params["temperature"] = self.temperature
+            params["max_tokens"] = 50000
+            self.logger.debug(f"모델 {self.model_name}: temperature={self.temperature} 사용")
+
+        # API 호출
+        try:
+            response = client.chat.completions.create(**params)
+            #answer = response.choices[0].message.content
+            self.logger.debug(f"LLM 응답 생성 완료")
+            return response
+            #return answer
+        except Exception as e:
+            self.logger.error(f"OpenAI API 호출 실패: {e}")
+            raise
+
+
