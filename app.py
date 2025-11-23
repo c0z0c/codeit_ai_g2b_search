@@ -9,7 +9,7 @@ import streamlit as st
 import os
 from openai import OpenAI
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys
 from dotenv import load_dotenv
 
@@ -23,7 +23,7 @@ sys.path.insert(0, str(project_root))
 from src.db import DocumentsDB, ChatHistoryDB
 from src.config import get_config
 
-from scripts.오형주.styles.streamlit_styling import load_css, apply_default_styling
+from scripts.오형주.ui import load_css, apply_default_styling, scroll_sidebar_for_tab, add_section_anchor
 
 # Streamlit 페이지 설정 - 반드시 첫 번째 Streamlit 명령
 st.set_page_config(
@@ -32,7 +32,7 @@ st.set_page_config(
 )
 
 # CSS 로드 및 스타일 적용 - set_page_config 다음
-load_css("scripts/오형주/styles/styles.css")  # CSS 파일 로드
+load_css("scripts/오형주/ui/styles.css")  # CSS 파일 로드
 apply_default_styling()  # 기본 Streamlit 오버라이드
 
 # Config 초기화
@@ -65,6 +65,10 @@ if 'current_model' not in st.session_state:
 if 'session_needs_rename' not in st.session_state:
     st.session_state.session_needs_rename = False
 
+# 현재 활성 탭 추적
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = "AI 채팅"
+
 # DB 초기화
 @st.cache_resource
 def init_dbs():
@@ -77,13 +81,11 @@ def init_dbs():
 
 dbs = init_dbs()
 
-# ----- 사이드바 구현 구간 ----- (1번 ~ 6번)
-
-# 1. st.sidebar 컨텍스트를 사용하여 사이드바 내용 정의
+# ----- 사이드바 구현 구간 -----
 with st.sidebar:
     st.title("설정 및 세션")
     
-    # 2. OpenAI API Key 입력 위젯
+    # OpenAI API Key 입력 위젯
     openai_api_key = st.text_input("OpenAI API Key를 입력하세요", 
                                     value=st.session_state.api_key, 
                                     type="password")
@@ -97,9 +99,10 @@ with st.sidebar:
     else:
         st.warning("API Key를 입력해주세요.")
     
-    st.markdown("---") 
+    st.markdown("---")
 
     # 데이터 통계
+    add_section_anchor("analytics-section")
     st.subheader("데이터 통계")
     try:
         doc_stats = dbs['docs'].get_document_stats()
@@ -117,7 +120,9 @@ with st.sidebar:
 
     st.divider()
 
+    add_section_anchor("document-search-section")
     st.title("업로드할 파일 선택 ") # 지금은 PDF파일만 업로드하고 추후 다양한 포맷 지원 예정
+
     # 파일 업로드 버튼 추가
     uploaded_file = st.file_uploader(
         "여기에 파일을 업로드하세요", # 사용자에게 보여줄 텍스트
@@ -146,10 +151,9 @@ with st.sidebar:
     else:
         st.info("파일을 기다리고 있습니다...")
 
-    # 3 & 4. 데이터/임베딩 업데이트 버튼
+    # 데이터/임베딩 업데이트 버튼 (!!!여기는 만들어진 API를 버튼 눌렀을 시 작동하는 코드가 필요!!!)
     st.title("데이터 및 임베딩 업데이트")
     if st.button("데이터 업데이트 (A API)", use_container_width=True, key="btn_data_update", disabled=not api_key_valid):
-        # 실제 로직에서는 API 키 유효성 검사를 통과해야 버튼 동작
         st.info("데이터 업데이트 시작...")
         st.success("데이터 업데이트 완료!")
         
@@ -157,15 +161,15 @@ with st.sidebar:
         st.info("새 데이터를 기반으로 임베딩 벡터를 갱신하고 있습니다...")
         st.success("임베딩 업데이트 완료!")
 
-    # 5 & 6. 세션 관리
-    st.title("채팅 세션 관리")
+    # 채팅 세션 관리
+    add_section_anchor("chat-session-section", "채팅 세션 관리") # 메인 영역 버튼 누르면 사이드바 이동
     
     model_options = ["gpt-5", "gpt-5-nano", "gpt-5-mini"]
     selected_model = st.selectbox(
-    "언어모델 선택",
-    options=model_options,
-    index=model_options.index(st.session_state.get('current_model', 'gpt-5')),
-    key="chat_model_select_below",
+        "언어모델 선택",
+        options=model_options,
+        index=model_options.index(st.session_state.get('current_model', 'gpt-5')),
+        key="chat_model_select_below",
     )
     if selected_model != st.session_state.get('current_model'):
         st.session_state.current_model = selected_model
@@ -175,6 +179,7 @@ with st.sidebar:
     if st.button("새 세션 생성", use_container_width=True, key="btn_new_session"):
         session_name = f"새 채팅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         new_session_id = dbs['chat'].create_session(session_name)
+
         # 초기 환영 메시지 추가 (updated_at을 최신으로 만들기 위해)
         welcome_msg = "안녕하세요! 저는 AI 채팅 어시스턴트입니다. 무엇을 도와드릴까요?"
         dbs['chat'].add_message(new_session_id, "assistant", welcome_msg)
@@ -192,35 +197,42 @@ with st.sidebar:
     # 세션 선택 (사이드바)
     if session_list:
         selected_idx = 0
+
         # 현재 선택된 세션이 있으면 해당 인덱스
         if st.session_state.session_id in session_ids:
             selected_idx = session_ids.index(st.session_state.session_id)
+
         selected_session_name = st.radio(
             "저장된 채팅 세션 목록 (최신 5개)",
             options=session_names,
             index=selected_idx,
             key="sidebar_session_radio",
         )
+
         # 선택 시 해당 세션의 메시지 불러오기
         if selected_session_name != st.session_state.selected_session:
             sel_idx = session_names.index(selected_session_name)
             sel_id = session_ids[sel_idx]
             st.session_state.session_id = sel_id
             st.session_state.selected_session = selected_session_name
+
             # DB에서 메시지 불러와서 role, content만 추출
             db_messages = dbs['chat'].get_session_messages(sel_id)
             st.session_state.messages = [{"role": msg["role"], "content": msg["content"]} for msg in db_messages]
             st.session_state.session_needs_rename = False
             st.rerun()
         
-        # 선택된 세션 삭제 버튼
         st.markdown("---")
-        if st.button("🗑️ 선택된 세션 삭제", use_container_width=True, type="secondary", key="delete_current_session"):
+
+        # 선택된 세션 삭제 버튼
+        if st.button("선택된 세션 삭제", use_container_width=True, type="secondary", key="delete_current_session"):
             current_idx = session_names.index(st.session_state.selected_session)
             current_sess_id = session_ids[current_idx]
+
             if dbs['chat'].delete_session(current_sess_id):
                 # 남은 세션 확인
                 remaining_sessions = dbs['chat'].list_sessions()
+
                 if remaining_sessions:
                     # 남은 세션 중 첫 번째 세션 선택
                     first_session = remaining_sessions[0]
@@ -239,93 +251,202 @@ with st.sidebar:
                     st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
                     st.session_state.selected_session = session_name
                     st.session_state.session_needs_rename = True
+
                 st.rerun()
+
     else:
         st.info("저장된 채팅 세션이 없습니다.")
 
 # ----- 2. 메인 영역 구현 -----
 
-# 7. 메인 영역 제목
-st.title("AI 채팅 도우미")
+# 메인 영역 제목
+st.title("문서 검색 시스템")
 
-st.subheader(f"현재 세션: {st.session_state.selected_session}")
+# 탭 생성 및 선택 추적
+selected_tab = st.radio(
+    "메뉴 선택",
+    ["AI 채팅", "문서 검색", "분석 및 통계"],
+    horizontal=True,
+    label_visibility="collapsed"
+)
 
-# 세션이 없으면 생성
-if st.session_state.session_id is None:
-    session_name = f"새 채팅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-    new_session_id = dbs['chat'].create_session(session_name)
-    welcome_msg = "안녕하세요! 저는 AI 채팅 어시스턴트입니다. 무엇을 도와드릴까요?"
-    dbs['chat'].add_message(new_session_id, "assistant", welcome_msg)
-    st.session_state.session_id = new_session_id
-    st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
-    st.session_state.selected_session = session_name
-    st.session_state.session_needs_rename = True
+# 선택된 탭에 따라 사이드바 스크롤
+if selected_tab == "AI 채팅":
+    scroll_sidebar_for_tab("AI 채팅")
 
-# 8. 채팅 메시지 표시 컨테이너
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+elif selected_tab == "문서 검색":
+    scroll_sidebar_for_tab("문서 검색")
 
-# 9. 사용자 입력 텍스트 박스 & 10. 전송 버튼 구현
-# 에러시 api 확인하는 코드 추가
-if prompt := st.chat_input("여기에 메시지를 입력하세요...", disabled=not api_key_valid):
+elif selected_tab == "분석 및 통계":
+    scroll_sidebar_for_tab("분석 및 통계")
 
-    # 1. 사용자 입력 저장 및 화면에 표시
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+# ===== 1번 탭: AI 채팅 =====
+if selected_tab == "AI 채팅":
+    st.subheader(f"현재 세션: {st.session_state.selected_session}")
 
-    # DB에 사용자 메시지 저장
-    dbs['chat'].add_message(st.session_state.session_id, "user", prompt)
-    
-    # 첫 메시지로 세션 이름 변경
-    if st.session_state.session_needs_rename:
-        # 메시지를 30자로 제한
-        session_name = prompt[:30] + "..." if len(prompt) > 30 else prompt
-        # DB에서 세션 이름 업데이트
-        with dbs['chat']._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE chat_sessions SET session_name = ? WHERE session_id = ?",
-                         (session_name, st.session_state.session_id))
-            conn.commit()
+    # 세션이 없으면 생성
+    if st.session_state.session_id is None:
+        session_name = f"새 채팅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        new_session_id = dbs['chat'].create_session(session_name)
+        welcome_msg = "안녕하세요! 저는 AI 채팅 어시스턴트입니다. 무엇을 도와드릴까요?"
+        dbs['chat'].add_message(new_session_id, "assistant", welcome_msg)
+        st.session_state.session_id = new_session_id
+        st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
         st.session_state.selected_session = session_name
-        st.session_state.session_needs_rename = False
+        st.session_state.session_needs_rename = True
 
-    # 2. API 키 유효성을 다시 확인하고, 유효한 경우에만 API 호출
-    if api_key_valid:
-        try:
-            # 2-1. OpenAI 클라이언트 초기화
-            client = OpenAI(api_key=openai_api_key)
+    # 채팅 메시지 표시 컨테이너
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-            # 2-2. API 호출을 위한 메시지 리스트 준비
-            # Streamlit 세션 상태의 messages를 OpenAI API 형식에 맞게 사용합니다.
-            messages_for_api = st.session_state.messages
+    # 사용자 입력 텍스트 박스 & 10. 전송 버튼 구현
+    if prompt := st.chat_input("여기에 메시지를 입력하세요...", disabled=not api_key_valid):
 
-            # 2-3. AI 응답 생성 (스트리밍 사용)
-            with st.chat_message("assistant"):
-                # chat.completions.create 호출
-                # 모델은 세션 상태에서 가져오며, 없으면 .env 기본값 사용
-                model_to_use = st.session_state.get('current_model') or os.getenv('OPENAI_MODEL', 'gpt-5-nano')
-                stream = client.chat.completions.create(
-                    model=model_to_use, # 사용가능모델: gpt-5, gpt-5-nano, gpt-5-mini
-                    messages=messages_for_api,
-                    stream=True,
-                )
+        # 사용자 입력 저장 및 화면에 표시
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # DB에 사용자 메시지 저장
+        dbs['chat'].add_message(st.session_state.session_id, "user", prompt)
+    
+        # 첫 메시지로 세션 이름 변경
+        if st.session_state.session_needs_rename:
+            # 메시지를 30자로 제한
+            session_name = prompt[:30] + "..." if len(prompt) > 30 else prompt
+
+            # DB에서 세션 이름 업데이트
+            with dbs['chat']._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE chat_sessions SET session_name = ? WHERE session_id = ?", (session_name, st.session_state.session_id))
+                conn.commit()
+
+            st.session_state.selected_session = session_name
+            st.session_state.session_needs_rename = False
+
+        # API 키 유효성을 다시 확인하고, 유효한 경우에만 API 호출
+        if api_key_valid:
+            try:
+                # OpenAI 클라이언트 초기화
+                client = OpenAI(api_key=openai_api_key)
+
+                # API 호출을 위한 메시지 리스트 준비
+                # Streamlit 세션 상태의 messages를 OpenAI API 형식에 맞게 사용
+                messages_for_api = st.session_state.messages
+
+                # AI 응답 생성 (스트리밍 사용)
+                with st.chat_message("assistant"):
+                    # chat.completions.create 호출
+                    # 모델은 세션 상태에서 가져오며, 없으면 .env 기본값 사용
+                    model_to_use = st.session_state.get('current_model') or os.getenv('OPENAI_MODEL', 'gpt-5-nano')
+                    stream = client.chat.completions.create(
+                        model=model_to_use, # 사용가능모델: gpt-5, gpt-5-nano, gpt-5-mini
+                        messages=messages_for_api,
+                        stream=True,
+                    )
+                    
+                    # Streamlit의 st.write_stream을 사용하여 응답을 실시간으로 화면에 출력
+                    response = st.write_stream(stream)
                 
-                # Streamlit의 st.write_stream을 사용하여 응답을 실시간으로 화면에 출력
-                response = st.write_stream(stream)
-            
-            # 2-4. AI 응답 저장
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            # DB에 AI 응답 저장
-            dbs['chat'].add_message(st.session_state.session_id, "assistant", response)
+                # AI 응답 저장
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                # DB에 AI 응답 저장
+                dbs['chat'].add_message(st.session_state.session_id, "assistant", response)
 
-        except Exception as e:
-            st.error(f"OpenAI API 호출 중 오류가 발생했습니다: {e}")
-            st.session_state.messages.pop() # 오류 발생 시 마지막 사용자 메시지 제거
+            except Exception as e:
+                st.error(f"OpenAI API 호출 중 오류가 발생했습니다: {e}")
+                st.session_state.messages.pop() # 오류 발생 시 마지막 사용자 메시지 제거
 
-    else:
-        st.error("OpenAI API Key를 먼저 입력해주세요.")
+        else:
+            st.error("OpenAI API Key를 먼저 입력해주세요.")
+
+# ===== 2번 탭: 문서 검색 =====
+elif selected_tab == "문서 검색":
+    # subheader와 selectbox를 같은 줄에 배치
+    header_col1, header_col2, header_col3 = st.columns([3, 2, 1])
+    with header_col1:
+        st.subheader("문서 검색")
+    with header_col2:
+        search_type = st.selectbox("검색 유형", ["키워드 검색", "시맨틱 검색", "하이브리드 검색"], key="search_type_select")
+    with header_col3:
+        top_k = st.number_input("결과 수", min_value=1, max_value=20, value=5, key="top_k_input")
+    
+    # 검색어 입력과 버튼
+    search_col1, search_col2 = st.columns([5, 1])
+    with search_col1:
+        search_query = st.text_input("검색어", key="doc_search_input", label_visibility="collapsed", placeholder="검색어를 입력하세요")
+    with search_col2:
+        search_button = st.button("검색", key="btn_search", use_container_width=True)
+    
+    if search_button:
+        if search_query:
+            st.info(f"'{search_query}' 검색 중...")
+            # TODO: 실제 검색 로직 구현
+            # TODO: 검색 결과에 다음 정보 포함:
+            #   - 문서 제목/파일명
+            #   - 매칭된 페이지 번호 (page_number)
+            #   - 해당 페이지의 텍스트 스니펫 (하이라이트)
+            #   - 유사도 점수
+            # 예시 결과 형식:
+            # {
+            #   "document": "제안요청서_2024.pdf",
+            #   "page": 15,
+            #   "snippet": "...검색어가 포함된 텍스트...",
+            #   "score": 0.95
+            # }
+            st.success("검색 완료! (검색 기능 구현 예정)")
+        else:
+            st.warning("검색어를 입력해주세요.")
+    
+    # 검색 결과 표시 영역
+    st.markdown("---")
+    st.subheader("검색 결과")
+    st.info("검색 결과가 여기에 표시됩니다.")
+    
+    # TODO: 검색 결과 표시 예시
+    # for result in search_results:
+    #     with st.expander(f"{result['document']} - 페이지 {result['page']}"):
+    #         st.markdown(f"**유사도:** {result['score']:.2%}")
+    #         st.markdown(f"**내용:** {result['snippet']}")
+    #         st.markdown(f"[원본 페이지로 이동 →](#page-{result['page']})")
+
+# ===== 3번 탭: 분석 및 통계 =====
+elif selected_tab == "분석 및 통계":
+    st.subheader("시스템 분석 및 통계")
+    
+    # 데이터베이스 통계
+    try:
+        doc_stats = dbs['docs'].get_document_stats()
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("총 문서 수", doc_stats.get('total_files', 0))
+        with col2:
+            st.metric("총 페이지 수", doc_stats.get('total_pages', 0))
+        with col3:
+            st.metric("총 토큰 수", doc_stats.get('total_tokens', 0))
+        with col4:
+            st.metric("총 파일 크기", f"{doc_stats.get('total_size', 0) / 1024:.1f} KB")
+        
+        st.markdown("---")
+        
+        # 채팅 통계
+        chat_stats = dbs['chat'].get_chat_stats()
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("총 세션 수", chat_stats.get('total_sessions', 0))
+        with col2:
+            st.metric("총 메시지 수", chat_stats.get('total_messages', 0))
+        with col3:
+            st.metric("활성 세션 수", chat_stats.get('active_sessions', 0))
+        
+    except Exception as e:
+        st.error(f"통계 로드 실패: {str(e)}")
+    
+    st.markdown("---")
+    st.info("추가 분석 및 시각화 기능이 여기에 추가될 예정입니다.")
     
 # 실행 예시: Streamlit을 실행하면 왼쪽에 "설정 및 세션" 제목이 있는 사이드바가 보입니다.
 # ------- 사이드바  끝 구간 -------

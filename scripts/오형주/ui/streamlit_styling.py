@@ -199,7 +199,7 @@ if __name__ == "__main__":
     st.set_page_config(page_title="스타일 테스트", layout="wide")
     
     # CSS 로드 (새 경로로 업데이트)
-    load_css("scripts/오형주/styles/styles.css")
+    load_css("scripts/오형주/ui/styles.css")
     apply_default_styling()
     
     # 테스트 UI

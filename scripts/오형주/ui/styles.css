@@ -525,13 +525,99 @@ tbody tr:hover {
     opacity: 1;
 }
 
+/* ==================== 라디오 버튼을 탭처럼 스타일링 ==================== */
+/* horizontal 라디오 버튼을 탭 UI로 변환 */
+
+/* 라디오 그룹 컨테이너 */
+div[role="radiogroup"][data-testid*="stHorizontalBlock"],
+div[data-testid="stHorizontalBlock"] div[role="radiogroup"] {
+    display: flex !important;
+    gap: 4px !important;
+    border-bottom: 2px solid #e0e0e0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 1.5rem !important;
+}
+
+/* 각 라디오 옵션 래퍼 */
+div[role="radiogroup"] > label,
+div[data-testid="stHorizontalBlock"] label {
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 12px 24px !important;
+    margin: 0 !important;
+    margin-bottom: -2px !important;
+    border: none !important;
+    border-radius: 8px 8px 0 0 !important;
+    background-color: #f5f5f5 !important;
+    color: #666666 !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    border-bottom: 2px solid transparent !important;
+}
+
+/* 탭 호버 효과 */
+div[role="radiogroup"] > label:hover,
+div[data-testid="stHorizontalBlock"] label:hover {
+    background-color: #e8eaed !important;
+    color: #333333 !important;
+}
+
+/* 선택된 탭 스타일 */
+div[role="radiogroup"] > label:has(input:checked),
+div[data-testid="stHorizontalBlock"] label:has(input:checked) {
+    background-color: white !important;
+    color: #1f77b4 !important;
+    font-weight: 600 !important;
+    border-bottom: 3px solid #1f77b4 !important;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.05) !important;
+}
+
+/* 라디오 버튼 원 숨기기 */
+div[role="radiogroup"] input[type="radio"],
+div[data-testid="stHorizontalBlock"] input[type="radio"] {
+    position: absolute !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+/* 라벨 내부 텍스트 */
+div[role="radiogroup"] label > div,
+div[data-testid="stHorizontalBlock"] label > div {
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* 다크모드 */
+@media (prefers-color-scheme: dark) {
+    div[role="radiogroup"] > label,
+    div[data-testid="stHorizontalBlock"] label {
+        background-color: #2a2a2a !important;
+        color: #999 !important;
+    }
+    
+    div[role="radiogroup"] > label:hover,
+    div[data-testid="stHorizontalBlock"] label:hover {
+        background-color: #333 !important;
+        color: #ccc !important;
+    }
+    
+    div[role="radiogroup"] > label:has(input:checked),
+    div[data-testid="stHorizontalBlock"] label:has(input:checked) {
+        background-color: #1a1a1a !important;
+        color: #1f77b4 !important;
+    }
+}
+
 /* ==================== 채팅 입력 위 오버레이 selectbox ==================== */
-/* 메인 컨테이너의 selectbox를 채팅 입력 박스 위에 겹쳐 보이게 합니다. */
+/* 메인 컨테이너의 특정 selectbox만 채팅 입력 박스 위에 겹쳐 보이게 합니다. */
 .block-container {
     position: relative; /* 오버레이의 기준이 되도록 설정 */
 }
 
-.block-container .stSelectbox {
+/* AI 모델 선택 selectbox만 오버레이로 표시 (key="chat_model_select_below" 사용) */
+.block-container div[data-testid="stSelectbox"]:has(select[id*="chat_model_select_below"]) {
     position: absolute !important;
     /* 메시지 전송 버튼 왼쪽(하단 우측)으로 위치 조정: 전송 버튼 왼쪽에 붙도록 값 조절 */
     right: 0px !important; /* 전송 버튼에서 왼쪽으로 약간 띄운 위치 */
@@ -551,4 +637,47 @@ tbody tr:hover {
         width: 100% !important;
         box-shadow: none !important;
     }
+}
+
+/* ==================== 문서 검색 탭 위젯 크기 조정 ==================== */
+/* 검색 유형 selectbox 크기 조정 */
+[data-testid="stSelectbox"] {
+    width: auto !important;
+}
+
+[data-testid="stSelectbox"] > div {
+    width: auto !important;
+}
+
+[data-testid="stSelectbox"] select {
+    min-width: 150px !important;
+    max-width: 180px !important;
+    font-size: 0.9rem !important;
+}
+
+/* 결과 수 number input 크기 조정 */
+[data-testid="stNumberInput"] {
+    width: auto !important;
+}
+
+[data-testid="stNumberInput"] > div {
+    width: auto !important;
+}
+
+[data-testid="stNumberInput"] input {
+    min-width: 80px !important;
+    max-width: 100px !important;
+    font-size: 0.9rem !important;
+    text-align: center !important;
+}
+
+/* 버튼 크기도 조정 */
+[data-testid="stNumberInput"] button {
+    padding: 0.25rem 0.5rem !important;
+}
+
+/* ==================== 검색 버튼 수직 정렬 ==================== */
+/* 검색 버튼을 입력 필드와 같은 높이로 맞춤 */
+button[kind="primary"] {
+    margin-top: 1.8rem !important;
 }
