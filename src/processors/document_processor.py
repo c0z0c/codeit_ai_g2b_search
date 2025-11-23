@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import hashlib
+import importlib
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, List, Tuple
 import tiktoken
-import math
+from tqdm import tqdm
 
+# PDF 처리 라이브러리
 try:
     import pymupdf
     import pymupdf4llm
@@ -12,21 +14,26 @@ try:
 except ImportError:
     PYMUPDF_AVAILABLE = False
 
+# HWP 처리 라이브러리
+try:
+    from helper_hwp import hwp_to_markdown
+    HELPER_HWP_AVAILABLE = True
+except ImportError:
+    HELPER_HWP_AVAILABLE = False
+
 from src.config import get_config
 from src.utils.logging_config import get_logger
-from tqdm import tqdm
-
-import importlib
 from src.db import documents_db
 importlib.reload(documents_db)
 from src.db.documents_db import DocumentsDB
+
 
 class DocumentProcessor:
     """
     문서 처리 클래스
 
     주요 기능:
-    - PDF 파일을 Markdown 형식으로 변환
+    - HWP, PDF 파일을 Markdown 형식으로 변환
     - 변환된 데이터를 데이터베이스에 저장
     - 파일 해시 계산
 
@@ -65,7 +72,7 @@ class DocumentProcessor:
             self.marker_dump_path.mkdir(parents=True, exist_ok=True)
         else:
             self.marker_dump_path = None
-            
+
         # 초기화 완료 메시지 로깅
         self.logger.info(f"DocumentProcessor 초기화 완료 (DB: {db_path})")
 
@@ -80,7 +87,7 @@ class DocumentProcessor:
             str: 전처리된 텍스트
         """
         import re
-        
+
         # 공백 및 탭을 단일 공백으로 변환
         text = re.sub(r'[ \t]+', ' ', text)
         # 연속된 세 줄 이상의 개행을 두 줄로 축소
@@ -104,22 +111,23 @@ class DocumentProcessor:
         with open(file_path, 'rb') as f:
             return hashlib.sha256(f.read()).hexdigest()
 
-    def markdown_with_progress(self, pdf_path: str) -> Tuple[List[Dict], int]:
+    def markdown_with_progress_pdf(self, doc_path: str) -> Tuple[List[Dict], int]:
         """
         PDF를 페이지별로 Markdown 변환 (진행 상황 표시)
-        
+
         Args:
-            pdf_path (str): PDF 파일 경로
-        
+            doc_path (str): PDF 파일 경로
+
         Returns:
             List[Dict]: [{'page_num': int, 'content': str}, ...]
+            int: 총 페이지 수
         """
         # 파일 이름 추출
-        file_name = Path(pdf_path).name
+        doc_name = Path(doc_path).name
         total_pages = 0
-        
+
         # PDF 파일 열기
-        with pymupdf.open(pdf_path) as doc:
+        with pymupdf.open(doc_path) as doc:
             total_pages = len(doc)  # 총 페이지 수 계산
 
         pages_data = []
@@ -129,13 +137,13 @@ class DocumentProcessor:
                 try:
                     # 페이지를 Markdown 형식으로 변환
                     markdown = pymupdf4llm.to_markdown(
-                        doc=pdf_path,
+                        doc=doc_path,
                         pages=[page_num]
                     )
-                    
+
                     # 변환된 Markdown 텍스트 전처리
                     markdown = self.clean_markdown_text(markdown)
-                    
+
                     # 빈 페이지 처리
                     if not markdown.strip():
                         status = 'empty'
@@ -144,17 +152,17 @@ class DocumentProcessor:
                     else:
                         status = 'processing'
                         pbar_msg = f"페이지 {page_num + 1} len={len(markdown)}"
-                    
+
                     # 페이지 데이터 저장
                     pages_data.append({
                         'page_num': page_num + 1,
                         'content': markdown
                     })
-                    
+
                     # 진행 상황 콜백 호출
                     if self.progress_callback:
                         self.progress_callback({
-                            'file_name': file_name,
+                            'file_name': doc_name,
                             'current_page': page_num + 1,
                             'total_pages': total_pages,
                             'page_content_length': len(markdown),
@@ -166,15 +174,15 @@ class DocumentProcessor:
                     # 예외 발생 시 경고 메시지 로깅 및 실패 처리
                     pbar_msg = f"페이지 {page_num + 1} 실패: {e}"
                     self.logger.warning(pbar_msg)
-                    
+
                     pages_data.append({
                         'page_num': page_num + 1,
                         'content': self.config.ERROR_PAGE_MARKER
                     })
-                    
+
                     if self.progress_callback:
                         self.progress_callback({
-                            'file_name': file_name,
+                            'file_name': doc_name,
                             'current_page': page_num + 1,
                             'total_pages': total_pages,
                             'page_content_length': 0,
@@ -185,7 +193,127 @@ class DocumentProcessor:
                     # 진행 상황 업데이트
                     pbar.set_postfix_str(pbar_msg)
                     pbar.update(1)
-        
+
+        return pages_data, total_pages
+
+    def markdown_with_progress_hwp(self, doc_path: str) -> Tuple[List[Dict], int]:
+        """
+        HWP를 Markdown 변환 (진행 상황 표시)
+        markdown을 읽으면서 80줄마다 페이지 데이터 저장
+
+        Args:
+            doc_path (str): HWP 파일 경로
+
+        Returns:
+            List[Dict]: [{'page_num': int, 'content': str}, ...]
+            int: 총 페이지 수
+        """
+        # 파일 이름 추출
+        doc_name = Path(doc_path).name
+        pages_data = []
+
+        # 한 페이지당 줄 수 설정
+        LINES_PER_PAGE = 80
+        total_pages = 0
+
+        try:
+            # 1. HWP를 전체 Markdown 텍스트로 변환
+            full_markdown = hwp_to_markdown(doc_path)
+            full_markdown = self.clean_markdown_text(full_markdown)
+
+            # 2. 줄 단위로 분리
+            lines = full_markdown.splitlines()
+            total_lines = len(lines)
+
+            # 3. 총 페이지 수 계산 (올림 처리와 유사한 로직)
+            if total_lines == 0:
+                total_pages = 1  # 빈 파일이라도 1페이지로 처리 (빈 페이지 마커 용)
+            else:
+                total_pages = (total_lines + LINES_PER_PAGE - 1) // LINES_PER_PAGE
+
+            # 4. 80줄 단위로 순회하며 처리
+            with tqdm(total=total_pages, desc="HWP to Markdown 80줄마다 페이지 분할", unit="page") as pbar:
+                # 0부터 total_lines까지 80씩 증가 (0, 80, 160...)
+                for i in range(0, total_lines, LINES_PER_PAGE):
+                    page_num = (i // LINES_PER_PAGE) + 1
+
+                    try:
+                        # 80줄 슬라이싱 후 다시 텍스트로 결합
+                        chunk_lines = lines[i: i + LINES_PER_PAGE]
+                        page_content = "\n".join(chunk_lines)
+
+                        # 빈 페이지 처리 로직 (PDF와 동일)
+                        if not page_content.strip():
+                            status = 'empty'
+                            page_content = self.config.EMPTY_PAGE_MARKER
+                            pbar_msg = f"빈 페이지: {page_num}"
+                        else:
+                            status = 'processing'
+                            pbar_msg = f"페이지 {page_num} len={len(page_content)}"
+
+                        # 페이지 데이터 저장
+                        pages_data.append({
+                            'page_num': page_num,
+                            'content': page_content
+                        })
+
+                        # 진행 상황 콜백 호출
+                        if self.progress_callback:
+                            self.progress_callback({
+                                'file_name': doc_name,
+                                'current_page': page_num,
+                                'total_pages': total_pages,
+                                'page_content_length': len(page_content),
+                                'status': status,
+                                'error': ""
+                            })
+
+                    except Exception as e:
+                        # 페이지(청크) 처리 중 에러 발생 시 (드문 경우지만 구조 유지를 위해 작성)
+                        pbar_msg = f"페이지 {page_num} 처리 실패: {e}"
+                        self.logger.warning(pbar_msg)
+
+                        pages_data.append({
+                            'page_num': page_num,
+                            'content': self.config.ERROR_PAGE_MARKER
+                        })
+
+                        if self.progress_callback:
+                            self.progress_callback({
+                                'file_name': doc_name,
+                                'current_page': page_num,
+                                'total_pages': total_pages,
+                                'page_content_length': 0,
+                                'status': 'failed',
+                                'error': str(e)
+                            })
+                    finally:
+                        # 진행 상황 업데이트
+                        pbar.set_postfix_str(pbar_msg)
+                        pbar.update(1)
+
+        except Exception as e:
+            # HWP 파일 자체 변환 실패 (hwp_to_markdown 단계 에러)
+            self.logger.warning(f"HWP 파일 변환 실패: {e}")
+
+            # 실패 시 1개의 에러 페이지로 반환
+            pages_data.append({
+                'page_num': 1,
+                'content': self.config.ERROR_PAGE_MARKER
+            })
+
+            if self.progress_callback:
+                self.progress_callback({
+                    'file_name': doc_name,
+                    'current_page': 1,
+                    'total_pages': 1,
+                    'page_content_length': 0,
+                    'status': 'failed',
+                    'error': str(e)
+                })
+
+            return pages_data, 1
+
         return pages_data, total_pages
 
     def _create_missing_dump_files(self) -> None:
@@ -195,50 +323,50 @@ class DocumentProcessor:
         if not self.config.MARKER_DUMP_ENABLED:
             self.logger.debug("마커 덤프 비활성화됨")
             return
-        
+
         all_docs = self.docs_db.get_documents_all()
-        
+
         if not all_docs:
             self.logger.debug("DB에 문서 없음")
             return
-        
+
         created_count = 0
         for doc in all_docs:
             file_name = doc.get('file_name')
             text_content = doc.get('text_content')
-            
+
             if not file_name or not text_content:
                 continue
-            
+
             if self._save_marker_dump_file(file_name, text_content):
                 created_count += 1
-        
+
         if created_count > 0:
             self.logger.info(f"기존 문서 덤프 파일 생성: {created_count}개")
 
     def _save_marker_dump_file(self, file_name: str, text_content: str) -> bool:
         """
         단일 문서의 마커 덤프 파일 저장
-        
+
         Args:
             file_name: 문서 파일명
             text_content: 마크다운 텍스트 내용
-        
+
         Returns:
             bool: 파일 생성 여부 (이미 존재하면 False)
         """
         if not self.config.MARKER_DUMP_ENABLED or not self.marker_dump_path:
             return False
-        
+
         # 확장자 처리: .md면 그대로, 아니면 .md로 변경
         file_path = Path(file_name)
         dump_file_name = file_path.name if file_path.suffix.lower() == '.md' else file_path.stem + '.md'
-        
+
         dump_file_path = self.marker_dump_path / dump_file_name
-        
+
         if dump_file_path.exists():
             return False
-        
+
         dump_file_path.write_text(text_content, encoding='utf-8')
         return True
 
@@ -256,7 +384,7 @@ class DocumentProcessor:
         length = len(text)
         # 몫과 나머지 계산
         k, m = divmod(length, n)
-        
+
         chunks = []
         start = 0
         for i in range(n):
@@ -265,16 +393,16 @@ class DocumentProcessor:
             end = start + chunk_size
             chunks.append(text[start:end])
             start = end
-            
+
         return chunks
 
-    def process_pdf(self, pdf_path: str, pdf_name: Optional[str] = None) -> Optional[str]:
+    def process_pdf(self, doc_path: str, doc_name: Optional[str] = None) -> Optional[str]:
         """
         PDF 파일을 처리하여 Markdown으로 변환하고 DB에 저장합니다.
 
         Args:
-            pdf_path (str): 처리할 PDF 파일 경로
-            pdf_name (Optional[str]): 처리할 PDF 파일 이름 (기본값: None)
+            doc_path (str): 처리할 PDF 파일 경로
+            doc_name (Optional[str]): 처리할 PDF 파일 이름 (기본값: None)
                 데이터베이스에 저장할 때 사용됩니다, 고유 해야 합니다. 만약 동일한 이름이라면 경로를 추가하세요.
 
         Returns:
@@ -282,34 +410,32 @@ class DocumentProcessor:
         """
         # PyMuPDF 설치 여부 확인
         if not PYMUPDF_AVAILABLE:
-            self.logger.error("PyMuPDF 미설치")
+            self.logger.error("PyMuPDF 미설치로 PDF 처리 불가")
             return None
 
         # PDF 파일 경로 확인
-        pdf_file = Path(pdf_path)
-        if not pdf_file.exists():
+        doc_file = Path(doc_path)
+        if not doc_file.exists():
             return None
-        
-        # 파일 이름 설정
-        if pdf_name is None:
-            pdf_name = pdf_file.name
 
-        self.logger.info(f"PDF 처리 시작: {pdf_file.name}")
+        # 파일 이름 설정
+        if doc_name is None:
+            doc_name = doc_file.name
+
+        self.logger.info(f"PDF 처리 시작: {doc_file.name}")
 
         # 파일 크기 및 해시 계산
-        file_size = pdf_file.stat().st_size
-        file_hash = self.calculate_file_hash(pdf_path)
-
+        file_size = doc_file.stat().st_size
+        file_hash = self.calculate_file_hash(doc_path)
         # 중복 검사 (이미 처리된 파일인지)
         # search_documents는 GROUP BY로 대표값만 가져오므로 존재 여부 확인 가능
         existing_docs = self.docs_db.search_documents(file_hash, search_type='hash')
         if existing_docs:
-            self.logger.info(f"이미 처리된 파일 (skip): {pdf_name}")
+            self.logger.info(f"이미 처리된 파일 (skip): {doc_name}")
             return file_hash
 
         # PDF를 Markdown으로 변환
-        pages_data, total_pages = self.markdown_with_progress(pdf_path)
-        
+        pages_data, total_pages = self.markdown_with_progress_pdf(doc_path)
         # 변환된 전체 텍스트 합치기
         all_content = []
         for page_data in pages_data:
@@ -319,28 +445,133 @@ class DocumentProcessor:
                 all_content.append(page_content)
             else:
                 all_content.append(content)
-        
+
         text_content = '\n'.join(all_content)
         text_content = self.clean_markdown_text(text_content)
-        
-        # --- [핵심 변경] 텍스트를 5개로 분할하여 저장 ---
+
+        # 텍스트를 5개로 분할하여 저장
         chunks = self.split_text_into_chunks(text_content, n=5)
-        
-        self.logger.info(f"텍스트 분할 저장 시작 (총 5개 조각)")
-        
+
+        self.logger.info("텍스트 분할 저장 시작 (총 5개 조각)")
+
         for idx, chunk in enumerate(chunks):
             self.docs_db.insert_text_content(
-                file_name=pdf_name,
+                file_name=doc_name,
                 file_hash=file_hash,
                 total_pages=total_pages,
                 file_size=file_size,
                 text_content=chunk,
                 chunk_index=idx  # chunk_index 전달 (0, 1, 2, 3, 4)
             )
-        
-        # 덤프 파일은 합쳐진 전체 텍스트로 저장
-        if self._save_marker_dump_file(pdf_name, text_content):
-            self.logger.info(f"마커 덤프 생성 완료")
 
-        self.logger.info(f"PDF 처리 및 분할 저장 완료: {pdf_file.name}")
+        # 덤프 파일은 합쳐진 전체 텍스트로 저장
+        if self._save_marker_dump_file(doc_name, text_content):
+            self.logger.info("마커 덤프 생성 완료")
+
+        self.logger.info(f"PDF 처리 및 분할 저장 완료: {doc_file.name}")
         return file_hash
+
+    def process_hwp(self, doc_path: str, doc_name: Optional[str] = None) -> Optional[str]:
+        """
+        HWP 파일을 처리하여 Markdown으로 변환하고 DB에 저장합니다.
+
+        Args:
+            doc_path (str): 처리할 HWP 파일 경로
+            doc_name (Optional[str]): 처리할 HWP 파일 이름 (기본값: None)
+                데이터베이스에 저장할 때 사용됩니다, 고유 해야 합니다. 만약 동일한 이름이라면 경로를 추가하세요.
+
+        Returns:
+            Optional[str]: 처리된 파일의 해시값 (실패 시 None 반환)
+        """
+        # helper_hwp 설치 여부 확인
+        if not HELPER_HWP_AVAILABLE:
+            self.logger.error("helper_hwp 미설치로 HWP 처리 불가")
+            return None
+
+        # HWP 파일 경로 확인
+        doc_file = Path(doc_path)
+        if not doc_file.exists():
+            return None
+
+        # 파일 이름 설정
+        if doc_name is None:
+            doc_name = doc_file.name
+
+        self.logger.info(f"HWP 처리 시작: {doc_file.name}")
+
+        # 파일 크기 및 해시 계산
+        file_size = doc_file.stat().st_size
+        file_hash = self.calculate_file_hash(doc_path)
+        # 중복 검사 (이미 처리된 파일인지)
+        existing_docs = self.docs_db.search_documents(file_hash, search_type='hash')
+        if existing_docs:
+            self.logger.info(f"이미 처리된 파일 (skip): {doc_name}")
+            return file_hash
+
+        # HWP를 Markdown으로 변환
+        pages_data, total_pages = self.markdown_with_progress_hwp(doc_path)
+        # 변환된 전체 텍스트 합치기
+        all_content = []
+        for page_data in pages_data:
+            content = page_data['content']
+            if content != self.config.EMPTY_PAGE_MARKER:
+                page_content = f"{self.config.PAGE_MARKER_FORMAT.format(page_num=page_data['page_num'])}\n\n{content}"
+                all_content.append(page_content)
+            else:
+                all_content.append(content)
+
+        text_content = '\n'.join(all_content)
+        text_content = self.clean_markdown_text(text_content)
+
+        # 텍스트를 5개로 분할하여 저장
+        chunks = self.split_text_into_chunks(text_content, n=5)
+
+        self.logger.info("텍스트 분할 저장 시작 (총 5개 조각)")
+
+        # 데이터베이스에 저장
+        for idx, chunk in enumerate(chunks):
+            self.docs_db.insert_text_content(
+                file_name=doc_name,
+                file_hash=file_hash,
+                total_pages=total_pages,
+                file_size=file_size,
+                text_content=chunk,
+                chunk_index=idx  # chunk_index 전달 (0, 1, 2, 3, 4)
+            )
+
+        # 덤프 파일 저장
+        if self._save_marker_dump_file(doc_name, text_content):
+            self.logger.info("마커 덤프 생성 완료")
+
+        self.logger.info(f"HWP 처리 및 저장 완료: {doc_name}")
+        return file_hash
+
+    def process_doc(self, doc_path: str, doc_name: Optional[str] = None) -> Optional[str]:
+        """
+        HWP, PDF 파일을 분기 처리하여 Markdown으로 변환하고 DB에 저장합니다.
+
+        Args:
+            doc_path (str): 처리할 문서 파일 경로
+            doc_name (Optional[str]): 처리할 문서 파일 이름 (기본값: None)
+                데이터베이스에 저장할 때 사용됩니다, 고유 해야 합니다. 만약 동일한 이름이라면 경로를 추가하세요.
+
+        Returns:
+            Optional[str]: 처리된 파일의 해시값 (실패 시 None 반환)
+        """
+        file_ext = Path(doc_path).suffix.lower()
+
+        if file_ext == '.hwp':
+            if not HELPER_HWP_AVAILABLE:
+                self.logger.error("helper_hwp 미설치로 HWP 처리 불가")
+                return None
+            return self.process_hwp(doc_path, doc_name)
+
+        elif file_ext == '.pdf':
+            if not PYMUPDF_AVAILABLE:
+                self.logger.error("PyMuPDF 미설치로 PDF 처리 불가")
+                return None
+            return self.process_pdf(doc_path, doc_name)
+
+        else:
+            self.logger.error(f"지원하지 않는 파일 형식: {file_ext}")
+            return None
