@@ -45,6 +45,14 @@ from src.llm import llm_processor
 importlib.reload(llm_processor)
 from src.llm import llm_processor
 
+from src.db  import chat_history_db
+importlib.reload(chat_history_db)
+from src.db import chat_history_db
+
+from src.db import documents_db
+importlib.reload(documents_db)
+from src.db import documents_db
+
 from src.db import DocumentsDB, ChatHistoryDB
 from src.vectorstore import VectorStoreManager
 
@@ -197,7 +205,6 @@ def init_process():
         'proc_doc': DocumentProcessor(config=config),
         'proc_emb': EmbeddingProcessor(config=config),
         'llm_retrieval': Retrieval(config=config),
-        'llm_processor': LLMProcessor(config=config),
     }
 
 if 'processes' not in st.session_state:
@@ -208,7 +215,6 @@ processes = st.session_state.processes
 proc_doc = st.session_state.processes['proc_doc']
 proc_emb = st.session_state.processes['proc_emb']
 llm_retrieval = st.session_state.processes['llm_retrieval']
-llm_processor = st.session_state.processes['llm_processor']
 
 
 # DB 초기화
@@ -329,15 +335,15 @@ with st.sidebar:
     else:
         st.info("파일을 기다리고 있습니다...")
 
-    # 데이터/임베딩 업데이트 버튼 (!!!여기는 만들어진 API를 버튼 눌렀을 시 작동하는 코드가 필요!!!)
-    st.title("데이터 및 임베딩 업데이트")
-    if st.button("데이터 업데이트 (A API)", use_container_width=True, key="btn_data_update", disabled=not api_key_valid):
-        st.info("데이터 업데이트 시작...")
-        st.success("데이터 업데이트 완료!")
+    # # 데이터/임베딩 업데이트 버튼 (!!!여기는 만들어진 API를 버튼 눌렀을 시 작동하는 코드가 필요!!!)
+    # st.title("데이터 및 임베딩 업데이트")
+    # if st.button("데이터 업데이트 (A API)", use_container_width=True, key="btn_data_update", disabled=not api_key_valid):
+    #     st.info("데이터 업데이트 시작...")
+    #     st.success("데이터 업데이트 완료!")
         
-    if st.button("임베딩 업데이트 (B API)", use_container_width=True, key="btn_embedding_update", disabled=not api_key_valid):
-        st.info("새 데이터를 기반으로 임베딩 벡터를 갱신하고 있습니다...")
-        st.success("임베딩 업데이트 완료!")
+    # if st.button("임베딩 업데이트 (B API)", use_container_width=True, key="btn_embedding_update", disabled=not api_key_valid):
+    #     st.info("새 데이터를 기반으로 임베딩 벡터를 갱신하고 있습니다...")
+    #     st.success("임베딩 업데이트 완료!")
 
     # 채팅 세션 관리
     add_section_anchor("chat-session-section", "채팅 세션 관리") # 메인 영역 버튼 누르면 사이드바 이동
@@ -478,66 +484,52 @@ if selected_tab == "AI 채팅":
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
+    # --------------------------------------------------------------------------------------------
     # 사용자 입력 텍스트 박스 & 10. 전송 버튼 구현
+    # --------------------------------------------------------------------------------------------
     if prompt := st.chat_input("여기에 메시지를 입력하세요...", disabled=not api_key_valid):
+        
+        query = prompt.strip()
+        logger.debug(f"사용자 입력: {prompt}")
 
-        # 사용자 입력 저장 및 화면에 표시
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
+        
+        db_messages = dbs['chat'].get_session_messages(st.session_state.session_id)
+        
+        file_hash = None
+        if not db_messages or len(db_messages) != 0:
+            for msg in db_messages:
+                str_retrieved_chunks = msg.get('retrieved_chunks', None)
+                if str_retrieved_chunks and len(str_retrieved_chunks) > 3:
+                    logger.debug(f"retrieved_chunks: {str_retrieved_chunks[:100]}")
+                    retrieved_chunks = json.loads(str_retrieved_chunks)
+                    if retrieved_chunks and len(retrieved_chunks) > 0:
+                        try:
+                            file_hash = retrieved_chunks['best_page']['file_hash']
+                            logger.debug(f"file_hash 추출됨: {file_hash}")
+                        except (KeyError, TypeError) as e:
+                            logger.error(f"retrieved_chunks 처리 중 오류 발생: {e}")
+                            file_hash = None
+                if file_hash is not None:
+                    break
+        
+        metadata = None
+        if file_hash is not None and len(file_hash) == 64:
+            metadata = {
+                'file_hash': file_hash,
+            }            
+        
+        embedding_result = llm_retrieval.search_page(query, sort_by='page', filter_metadata=metadata)
+        print_dic_tree(embedding_result)
+        llm_processor = LLMProcessor(session_id=st.session_state.session_id, config=config)
+        llm_res = llm_processor.generate_response(query, retrieved_chunks=embedding_result)
+        logger.debug(f"result: {llm_res[:100]}") 
+        st.session_state.messages.append({"role": "assistant", "content": llm_res})
+        st.markdown(llm_res)
 
-        # DB에 사용자 메시지 저장
-        dbs['chat'].add_message(st.session_state.session_id, "user", prompt)
-    
-        # 첫 메시지로 세션 이름 변경
-        if st.session_state.session_needs_rename:
-            # 메시지를 30자로 제한
-            session_name = prompt[:30] + "..." if len(prompt) > 30 else prompt
-
-            # DB에서 세션 이름 업데이트
-            with dbs['chat']._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("UPDATE chat_sessions SET session_name = ? WHERE session_id = ?", (session_name, st.session_state.session_id))
-                conn.commit()
-
-            st.session_state.selected_session = session_name
-            st.session_state.session_needs_rename = False
-
-        # API 키 유효성을 다시 확인하고, 유효한 경우에만 API 호출
-        if api_key_valid:
-            try:
-                # OpenAI 클라이언트 초기화
-                client = OpenAI(api_key=openai_api_key)
-
-                # API 호출을 위한 메시지 리스트 준비
-                # Streamlit 세션 상태의 messages를 OpenAI API 형식에 맞게 사용
-                messages_for_api = st.session_state.messages
-
-                # AI 응답 생성 (스트리밍 사용)
-                with st.chat_message("assistant"):
-                    # chat.completions.create 호출
-                    # 모델은 세션 상태에서 가져오며, 없으면 .env 기본값 사용
-                    model_to_use = st.session_state.get('current_model') or os.getenv('OPENAI_MODEL', 'gpt-5-nano')
-                    stream = client.chat.completions.create(
-                        model=model_to_use, # 사용가능모델: gpt-5, gpt-5-nano, gpt-5-mini
-                        messages=messages_for_api,
-                        stream=True,
-                    )
-                    
-                    # Streamlit의 st.write_stream을 사용하여 응답을 실시간으로 화면에 출력
-                    response = st.write_stream(stream)
-                
-                # AI 응답 저장
-                st.session_state.messages.append({"role": "assistant", "content": response})
-                # DB에 AI 응답 저장
-                dbs['chat'].add_message(st.session_state.session_id, "assistant", response)
-
-            except Exception as e:
-                st.error(f"OpenAI API 호출 중 오류가 발생했습니다: {e}")
-                st.session_state.messages.pop() # 오류 발생 시 마지막 사용자 메시지 제거
-
-        else:
-            st.error("OpenAI API Key를 먼저 입력해주세요.")
+    # ============================================================================================
 
 # ===== 2번 탭: 문서 검색 =====
 elif selected_tab == "문서 검색":

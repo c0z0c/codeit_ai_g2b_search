@@ -128,7 +128,7 @@ class ChatHistoryDB:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT role, content, timestamp
+                SELECT session_id, role, content, retrieved_chunks, timestamp
                 FROM chat_messages
                 WHERE session_id = ?
                 ORDER BY timestamp ASC, message_id ASC

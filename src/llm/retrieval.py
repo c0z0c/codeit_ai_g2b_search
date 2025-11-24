@@ -118,7 +118,8 @@ class Retrieval:
 
         if top_k is None:
             top_k = self.config.TOP_K_SUMMARY
-
+            
+        self.logger.debug(f"filter_metadata: {filter_metadata}")
         self.logger.info(f"검색 시작: query='{query[:50]}...', top_k={top_k}")
 
         if api_key:
@@ -214,6 +215,8 @@ class Retrieval:
         if sort_by not in ["score", "page"]:
             self.logger.warning(f"잘못된 sort_by 값: {sort_by}, 기본값 'score' 사용")
             sort_by = "score"
+        
+        self.logger.debug(f"filter_metadata: {filter_metadata}")
         
         initial_results = self.search(
             query=query,
