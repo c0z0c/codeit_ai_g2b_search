@@ -801,6 +801,70 @@ class VectorStoreManager:
         # 재구성 후 chunk_map 재구축
         self._build_chunk_map()
 
+    def get_summary(self, file_hash: str) -> Dict[str, Any]:
+        """
+        특정 파일 해시에 대한 요약 정보를 반환합니다.
+
+        Args:
+            file_hash (str): 요약 정보를 조회할 파일의 해시값.
+
+        Returns:
+            Dict[str, Any]: 파일 해시에 대한 요약 정보 딕셔너리.
+                - file_name: 파일 이름
+                - vector_count: 벡터 개수
+                - chunk_indices: 포함된 청크 인덱스 리스트
+                - total_size_mb: 파일 관련 벡터의 총 크기 (MB)
+        """
+        if self.vectorstore is None:
+            if not self.load():
+                self.logger.error("로드할 벡터스토어가 없습니다.")
+                return None
+
+        try:
+            docstore = self.vectorstore.docstore
+            index_to_id = self.vectorstore.index_to_docstore_id
+
+            vector_count = 0
+            chunk_indices = []
+            file_name = "unknown"
+            total_size_bytes = 0
+
+            for idx in range(self.vectorstore.index.ntotal):
+                doc_id = index_to_id.get(idx)
+                if doc_id is None:
+                    continue
+
+                doc = docstore.search(doc_id)
+                if doc is None:
+                    continue
+
+                if doc.metadata.get('file_hash') == file_hash:
+                    vector_count += 1
+                    chunk_index = doc.metadata.get('chunk_index')
+                    if chunk_index is not None:
+                        chunk_indices.append(chunk_index)
+                    file_name = doc.metadata.get('file_name', 'unknown')
+
+                    # 벡터 크기 계산 (FAISS 인덱스에서 벡터 크기 추정)
+                    vector_size = self.vectorstore.index.reconstruct(idx).nbytes
+                    total_size_bytes += vector_size
+
+            total_size_mb = total_size_bytes / (1024 * 1024)
+
+            summary = {
+                "file_name": file_name,
+                "vector_count": vector_count,
+                # "chunk_indices": sorted(chunk_indices),
+                "total_size_mb": round(total_size_mb, 2),
+            }
+
+            self.logger.info(f"파일 해시 {file_hash[:8]}에 대한 요약 정보: {summary}")
+            return summary
+
+        except Exception as e:
+            self.logger.error(f"요약 정보 생성 실패: {e}")
+            return None
+
     def summary(self) -> None:
         """
         벡터스토어의 현재 상태를 테이블 형식으로 출력합니다.

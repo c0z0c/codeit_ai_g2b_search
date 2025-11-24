@@ -4,6 +4,7 @@ from getpass import getpass
 import os
 import json
 import hashlib  # ⭐ 파일 해시를 위한 추가!
+from src.utils.helper_utils import *
 
 try:
     from langchain_openai import ChatOpenAI
@@ -60,13 +61,12 @@ class LLMProcessor:
             self.logger.warning("gpt-5-mini는 temperature=0을 지원하지 않음 → 1.0으로 자동 변경")
             self.temperature = 1.0
 
-        # API KEY 등록
-        if api_key is None or not api_key.strip():
-            key_in = getpass("OpenAI API Key를 입력하세요: ").strip()
-            api_key = key_in or None
-        if not api_key:
-            raise ValueError("API Key가 필요합니다.")
-        os.environ["OPENAI_API_KEY"] = api_key
+        # # API KEY 등록
+        if api_key is not None:
+            os.environ["OPENAI_API_KEY"] = api_key
+            
+        if os.environ["OPENAI_API_KEY"].strip() == "":
+            raise ValueError("OPENAI_API_KEY 환경 변수가 설정되지 않음")
 
         # LangChain LLM
         if LANGCHAIN_AVAILABLE:
@@ -120,6 +120,37 @@ class LLMProcessor:
         print(f"LLMProcessor (DB 저장={self.use_db}) ready.")
 
     # -----------------------------------------------------------------------
+    # ⭐
+    #  파일 해시 생성 패치 추가
+    # -----------------------------------------------------------------------
+    def _add_file_hash(self, chunks: Any) -> Any:
+        """
+        retrieved_chunks 에 file_hash 필드를 자동 추가하는 패치.
+        """
+        if chunks is None:
+            return chunks
+
+        def calc_hash(text: str) -> str:
+            return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+        if isinstance(chunks, list):
+            for c in chunks:
+                if "file_hash" not in c:
+                    c["file_hash"] = calc_hash(c.get("chunk_text", "") or c.get("text", ""))
+            return chunks
+
+        if isinstance(chunks, dict):
+            # pages 기반 검색
+            if "pages" in chunks and isinstance(chunks["pages"], list):
+                for p in chunks["pages"]:
+                    if "file_hash" not in p:
+                        p["file_hash"] = calc_hash(p.get("text", ""))
+                return chunks
+
+        return chunks
+
+
+    # -----------------------------------------------------------------------
     # ⭐ JSON 직렬화 오류 해결 (튜플 키 변환)
     # -----------------------------------------------------------------------
     def _convert_tuple_keys_to_str(self, data: Any) -> Any:
@@ -155,9 +186,14 @@ class LLMProcessor:
             pages = pages[:max_chunks]
         parts = []
         for i, p in enumerate(pages, 1):
+            # parts.append(
+            #     f"[문서 {i}] {p.get('file_name')} "
+            #     f"(페이지 {p.get('page_number')}, score={p.get('score'):.4f})\n{p.get('text')}"
+            # )
             parts.append(
-                f"[문서 {i}] {p.get('file_name')} "
-                f"(페이지 {p.get('page_number')}, score={p.get('score'):.4f})\n{p.get('text')}"
+                f"[출처: {i}] {p.get('file_name')}, "
+                f"페이지 {p.get('page_number')}, 유사도={p.get('score'):.4f})\n"
+                f"{p.get('text')}"
             )
         return "\n\n".join(parts)
 
@@ -225,9 +261,22 @@ class LLMProcessor:
             raise KeyError("RAG 프롬프트 template을 찾을 수 없습니다.")
 
         # 6) LLM 호출
-        full_input = f"Context:\n{context}\n\nQuery:\n{query}"
+        # full_input = f"Context:\n{context}\n\nQuery:\n{query}"
+        #full_input = f"Context:\n{context}\n\nQuery:\n{query}"
+
+        full_input = f"""다음 컨텍스트를 참고하여 질문에 답변해주세요.
+답변은 컨텍스트 내용에 기반해야 하며, 출처 정보(파일명, 페이지, 유사도)를 답변 다음 줄에 포함해주세요.
+답변만 작성하고 '질의:', '답변:' 등의 라벨은 붙이지 마세요.
+
+컨텍스트:
+{context}
+
+질문: {query}
+
+답변:"""     
 
         try:
+            print_dic_tree(full_input)
             response = self.conversation_chain.invoke(
                 {"input": full_input},
                 config={"configurable": {"session_id": self.session_id}},

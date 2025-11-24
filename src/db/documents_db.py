@@ -397,7 +397,7 @@ class DocumentsDB:
             self.logger.error(f"summary() 실행 중 오류: {e}")
 
 
-logger.info("DocumentsDB 모듈이 로드되었습니다.")
+# logger.info("DocumentsDB 모듈이 로드되었습니다.")
 if __name__ == "__main__":
     db = DocumentsDB("data/documents.db")
     db.summary()

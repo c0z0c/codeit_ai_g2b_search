@@ -707,7 +707,10 @@ class EmbeddingProcessor:
         if only_in_vectors:
             self.logger.info(f"[삭제 작업] {len(only_in_vectors)}개 파일 임베딩 삭제 시작")
             for file_hash in only_in_vectors:
-                file_name = docs_file_hashes[file_hash]
+                file_name = docs_file_hashes.get(file_hash)
+                if file_name is None:
+                    self.logger.warning(f"Orphaned embedding detected: {file_hash} not in documents DB")
+                    continue  # 또는 삭제 로직 추가                
                 try:
                     self.logger.info(f"  삭제: {file_hash[:16]}...")
                     success = self.vector_manager.remove_by_file_hash(file_hash)
