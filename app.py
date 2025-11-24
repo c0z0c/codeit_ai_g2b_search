@@ -103,11 +103,11 @@ def init_config():
         logger.warning("OpenAI API 키 필요")    
 
     cfg.OPENAI_API_KEY = openai_api_key
-    cfg.DOCUMENTS_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "documents.db")
-    cfg.EMBEDDINGS_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "embeddings.db")
-    cfg.CHAT_HISTORY_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "chat_history.db")
-    cfg.VECTORSTORE_PATH = str(PROJECT_ROOT_PATH / "data" / "vectorstore")
-    cfg.CONFIG_PATH = CONFIG_PATH
+    # cfg.DOCUMENTS_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "documents.db")
+    # cfg.EMBEDDINGS_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "embeddings.db")
+    # cfg.CHAT_HISTORY_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "chat_history.db")
+    # cfg.VECTORSTORE_PATH = str(PROJECT_ROOT_PATH / "data" / "vectorstore")
+    # cfg.CONFIG_PATH = CONFIG_PATH
     return cfg
 
 if 'config' not in st.session_state:
@@ -182,10 +182,6 @@ if 'current_model' not in st.session_state:
 if 'session_needs_rename' not in st.session_state:
     st.session_state.session_needs_rename = False
 
-# 현재 활성 탭 추적
-if 'active_tab' not in st.session_state:
-    st.session_state.active_tab = "AI 채팅"
-
 # 임시 디렉토리 생성
 # 업로드 파일 저장
 if 'temp_dir' not in st.session_state:
@@ -254,6 +250,47 @@ with st.sidebar:
         st.warning("API Key를 입력해주세요.")
     
     st.markdown("---")
+
+    # 데이터 포털 업데이트 섹션
+    st.subheader("데이터 포털 업데이트")
+
+    with st.expander("날짜 범위 선택", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            start_date = st.date_input(
+                "시작 날짜",
+                value=datetime.now() - timedelta(days=7),
+                max_value=datetime.now(),
+                key="update_start_date"
+            )
+        with col2:
+            end_date = st.date_input(
+                "종료 날짜",
+                value=datetime.now(),
+                max_value=datetime.now(),
+                key="update_end_date"
+            )
+        
+        # 날짜 유효성 검사
+        if start_date > end_date:
+            st.error("시작 날짜는 종료 날짜보다 이전이어야 합니다.")
+
+    # 업데이트 버튼
+    if st.button("데이터 포털 사이트 업데이트", use_container_width=True, key="btn_update_data_portal"):
+        if start_date > end_date:
+            st.error("날짜 범위가 유효하지 않습니다.")
+        else:
+            try:
+                logger.info(f"데이터 포털 업데이트 시작: {start_date} ~ {end_date}")
+                # TODO: proc_doc.process_doc() 호출 시 날짜 범위 전달
+                # file_hash, result = proc_doc.process_doc(start_date=start_date, end_date=end_date)
+                # proc_emb.sync_with_docs_db(config.OPENAI_API_KEY)
+                
+                st.success(f"데이터 포털 사이트를 성공적으로 업데이트했습니다. ({start_date} ~ {end_date})")
+            except Exception as e:
+                logger.error(f"데이터 포털 업데이트 실패: {str(e)}")
+                st.error(f"데이터 포털 업데이트에 실패했습니다: {str(e)}")
+
 
     # 데이터 통계
     add_section_anchor("analytics-section")
@@ -327,23 +364,9 @@ with st.sidebar:
             st.subheader("임베딩 요약 정보")
             st.json(summary)
         
-        # 파일을 읽고 싶다면 (예: CSV 파일)
-        # import pandas as pd
-        # if uploaded_file.type == "text/csv":
-        #     df = pd.read_csv(uploaded_file)
-        #     st.dataframe(df.head())
     else:
         st.info("파일을 기다리고 있습니다...")
 
-    # # 데이터/임베딩 업데이트 버튼 (!!!여기는 만들어진 API를 버튼 눌렀을 시 작동하는 코드가 필요!!!)
-    # st.title("데이터 및 임베딩 업데이트")
-    # if st.button("데이터 업데이트 (A API)", use_container_width=True, key="btn_data_update", disabled=not api_key_valid):
-    #     st.info("데이터 업데이트 시작...")
-    #     st.success("데이터 업데이트 완료!")
-        
-    # if st.button("임베딩 업데이트 (B API)", use_container_width=True, key="btn_embedding_update", disabled=not api_key_valid):
-    #     st.info("새 데이터를 기반으로 임베딩 벡터를 갱신하고 있습니다...")
-    #     st.success("임베딩 업데이트 완료!")
 
     # 채팅 세션 관리
     add_section_anchor("chat-session-section", "채팅 세션 관리") # 메인 영역 버튼 누르면 사이드바 이동
@@ -449,7 +472,7 @@ st.title("문서 검색 시스템")
 # 탭 생성 및 선택 추적
 selected_tab = st.radio(
     "메뉴 선택",
-    ["AI 채팅", "문서 검색", "분석 및 통계"],
+    ["AI 채팅", "문서 검색"],
     horizontal=True,
     label_visibility="collapsed"
 )
@@ -460,9 +483,6 @@ if selected_tab == "AI 채팅":
 
 elif selected_tab == "문서 검색":
     scroll_sidebar_for_tab("문서 검색")
-
-elif selected_tab == "분석 및 통계":
-    scroll_sidebar_for_tab("분석 및 통계")
 
 # ===== 1번 탭: AI 채팅 =====
 if selected_tab == "AI 채팅":
@@ -485,7 +505,7 @@ if selected_tab == "AI 채팅":
             st.markdown(message["content"])
 
     # --------------------------------------------------------------------------------------------
-    # 사용자 입력 텍스트 박스 & 10. 전송 버튼 구현
+    # 사용자 입력 텍스트 박스 & 전송 버튼 구현
     # --------------------------------------------------------------------------------------------
     if prompt := st.chat_input("여기에 메시지를 입력하세요...", disabled=not api_key_valid):
         
@@ -497,7 +517,7 @@ if selected_tab == "AI 채팅":
             st.markdown(prompt)
         
         db_messages = dbs['chat'].get_session_messages(st.session_state.session_id)
-        
+
         file_hash = None
         if not db_messages or len(db_messages) != 0:
             for msg in db_messages:
@@ -521,26 +541,23 @@ if selected_tab == "AI 채팅":
                 'file_hash': file_hash,
             }            
         
-        embedding_result = llm_retrieval.search_page(query, sort_by='page', filter_metadata=metadata)
-        print_dic_tree(embedding_result)
-        llm_processor = LLMProcessor(session_id=st.session_state.session_id, config=config)
-        llm_res = llm_processor.generate_response(query, retrieved_chunks=embedding_result)
-        logger.debug(f"result: {llm_res[:100]}") 
+        with st.spinner("답변을 준비중입니다..."):
+            embedding_result = llm_retrieval.search_page(query, sort_by='page', filter_metadata=metadata)
+            print_dic_tree(embedding_result)
+            llm_processor = LLMProcessor(session_id=st.session_state.session_id, config=config)
+            llm_res = llm_processor.generate_response(query, retrieved_chunks=embedding_result)
+            logger.debug(f"result: {llm_res[:100]}") 
+        
         st.session_state.messages.append({"role": "assistant", "content": llm_res})
-        st.markdown(llm_res)
+        with st.chat_message("assistant"):
+            st.markdown(llm_res)
 
     # ============================================================================================
 
 # ===== 2번 탭: 문서 검색 =====
 elif selected_tab == "문서 검색":
-    # subheader와 selectbox를 같은 줄에 배치
-    header_col1, header_col2, header_col3 = st.columns([3, 2, 1])
-    with header_col1:
-        st.subheader("문서 검색")
-    with header_col2:
-        search_type = st.selectbox("검색 유형", ["키워드 검색", "시맨틱 검색", "하이브리드 검색"], key="search_type_select")
-    with header_col3:
-        top_k = st.number_input("결과 수", min_value=1, max_value=20, value=5, key="top_k_input")
+    st.subheader("문서 검색")
+    top_k = st.number_input("결과 수", min_value=1, max_value=20, value=5, key="top_k_input")
     
     # 검색어 입력과 버튼
     search_col1, search_col2 = st.columns([5, 1])
@@ -557,6 +574,7 @@ elif selected_tab == "문서 검색":
             
             st.success(f"검색 완료! {len(embedding_result)}개 결과")
             
+            st.subheader("검색 결과")
             # 검색 결과 표시
             for idx, result in enumerate(embedding_result, 1):
                 file_name = result.get('file_name', '파일명 없음')
@@ -573,11 +591,7 @@ elif selected_tab == "문서 검색":
                     st.text(text_snippet)
         else:
             st.warning("검색어를 입력해주세요.")
-    
-    # 검색 결과 표시 영역
-    st.markdown("---")
-    st.subheader("검색 결과")
-    st.info("검색 결과가 여기에 표시됩니다.")
+
     
     # TODO: 검색 결과 표시 예시
     # for result in search_results:
@@ -586,42 +600,6 @@ elif selected_tab == "문서 검색":
     #         st.markdown(f"**내용:** {result['snippet']}")
     #         st.markdown(f"[원본 페이지로 이동 →](#page-{result['page']})")
 
-# ===== 3번 탭: 분석 및 통계 =====
-elif selected_tab == "분석 및 통계":
-    st.subheader("시스템 분석 및 통계")
-    
-    # 데이터베이스 통계
-    try:
-        doc_stats = dbs['docs'].get_document_stats()
-        
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("총 문서 수", doc_stats.get('total_files', 0))
-        with col2:
-            st.metric("총 페이지 수", doc_stats.get('total_pages', 0))
-        with col3:
-            st.metric("총 토큰 수", doc_stats.get('total_tokens', 0))
-        with col4:
-            st.metric("총 파일 크기", f"{doc_stats.get('total_size', 0) / 1024:.1f} KB")
-        
-        st.markdown("---")
-        
-        # 채팅 통계
-        chat_stats = dbs['chat'].get_chat_stats()
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("총 세션 수", chat_stats.get('total_sessions', 0))
-        with col2:
-            st.metric("총 메시지 수", chat_stats.get('total_messages', 0))
-        with col3:
-            st.metric("활성 세션 수", chat_stats.get('active_sessions', 0))
-        
-    except Exception as e:
-        st.error(f"통계 로드 실패: {str(e)}")
-    
-    st.markdown("---")
-    st.info("추가 분석 및 시각화 기능이 여기에 추가될 예정입니다.")
     
 # 실행 예시: Streamlit을 실행하면 왼쪽에 "설정 및 세션" 제목이 있는 사이드바가 보입니다.
 # ------- 사이드바  끝 구간 -------
