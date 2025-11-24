@@ -60,13 +60,12 @@ class LLMProcessor:
             self.logger.warning("gpt-5-mini는 temperature=0을 지원하지 않음 → 1.0으로 자동 변경")
             self.temperature = 1.0
 
-        # API KEY 등록
-        if api_key is None or not api_key.strip():
-            key_in = getpass("OpenAI API Key를 입력하세요: ").strip()
-            api_key = key_in or None
-        if not api_key:
-            raise ValueError("API Key가 필요합니다.")
-        os.environ["OPENAI_API_KEY"] = api_key
+        # # API KEY 등록
+        if api_key is not None:
+            os.environ["OPENAI_API_KEY"] = api_key
+            
+        if os.environ["OPENAI_API_KEY"].strip() == "":
+            raise ValueError("OPENAI_API_KEY 환경 변수가 설정되지 않음")
 
         # LangChain LLM
         if LANGCHAIN_AVAILABLE:

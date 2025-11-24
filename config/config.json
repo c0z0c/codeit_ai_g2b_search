@@ -31,7 +31,7 @@
   "EMBEDDINGS_DB_PATH": "data/embeddings.db",
   "CHAT_HISTORY_DB_PATH": "data/chat_history.db",
   "VECTORSTORE_PATH": "data/vectorstore",
-  "CONFIG_PATH": "config.json",
+  "CONFIG_PATH": "config/config.json",
   "MARKER_DUMP_ENABLED": false,
   "MARKER_DUMP_PATH": "data/markers",
   "EMPTY_PAGE_THRESHOLD": 10,
@@ -59,7 +59,7 @@
     "math": 50
   },
   "HASH_ALGORITHM": "sha256",
-  "LOG_LEVEL": "INFO",
+  "LOG_LEVEL": "DEBUG",
   "LOG_DIR": "logs",
   "LOG_FILE_NAME": "rag_system.log",
   "LOG_FILE_MAX_BYTES": 10485760,

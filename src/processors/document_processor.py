@@ -197,7 +197,7 @@ class DocumentProcessor:
         doc_name: Optional[str],
         converter_func: Callable[[str], Tuple[List[Dict], int]],
         doc_type_log: str
-    ) -> Optional[str]:
+    ) -> Tuple[Optional[str], bool]:
         """
         문서 처리의 공통 워크플로우를 수행합니다. (PDF/HWP 공통)
 
@@ -218,7 +218,7 @@ class DocumentProcessor:
         doc_file = Path(doc_path)
         if not doc_file.exists():
             self.logger.error(f"파일을 찾을 수 없습니다: {doc_path}")
-            return None
+            return None, False
 
         # 파일 이름 설정
         if doc_name is None:
@@ -234,7 +234,7 @@ class DocumentProcessor:
         existing_docs = self.docs_db.search_documents(file_hash, search_type='hash')
         if existing_docs:
             self.logger.info(f"이미 처리된 파일 (skip): {doc_name}")
-            return file_hash
+            return file_hash, False
 
         # [변환 실행] 해당 파일 타입에 맞는 converter 함수를 호출하여 데이터를 받아옴
         pages_data, total_pages = converter_func(doc_path)
@@ -272,7 +272,7 @@ class DocumentProcessor:
             self.logger.info("마커 덤프 생성 완료")
 
         self.logger.info(f"{doc_type_log} 처리 및 저장 완료: {doc_name}")
-        return file_hash
+        return file_hash, True
 
     # [Converter Methods] - 각 파일 포맷별 변환 로직 (형태 유지)
     def markdown_with_progress_pdf(self, doc_path: str) -> Tuple[List[Dict], int]:
@@ -472,7 +472,7 @@ class DocumentProcessor:
         return pages_data, total_pages
 
     # [공통 인터페이스] - process_doc, process_pdf, process_hwp
-    def process_pdf(self, doc_path: str, doc_name: Optional[str] = None) -> Optional[str]:
+    def process_pdf(self, doc_path: str, doc_name: Optional[str] = None) -> Tuple[Optional[str], bool]:
         """
         PDF 파일을 처리하여 Markdown으로 변환하고 DB에 저장합니다.
 
@@ -487,7 +487,7 @@ class DocumentProcessor:
         # PyMuPDF 설치 여부 확인
         if not PYMUPDF_AVAILABLE:
             self.logger.error("PyMuPDF 미설치로 PDF 처리 불가")
-            return None
+            return None, False
 
         # 공통 워크플로우 실행 (PDF 변환 함수 전달)
         return self._process_common_workflow(
@@ -497,7 +497,7 @@ class DocumentProcessor:
             doc_type_log="PDF"
         )
 
-    def process_hwp(self, doc_path: str, doc_name: Optional[str] = None) -> Optional[str]:
+    def process_hwp(self, doc_path: str, doc_name: Optional[str] = None) -> Tuple[Optional[str], bool]:
         """
         HWP 파일을 처리하여 Markdown으로 변환하고 DB에 저장합니다.
 
@@ -522,7 +522,7 @@ class DocumentProcessor:
             doc_type_log="HWP"
         )
 
-    def process_doc(self, doc_path: str, doc_name: Optional[str] = None) -> Optional[str]:
+    def process_doc(self, doc_path: str, doc_name: Optional[str] = None) -> Tuple[Optional[str], bool]:
         """
         HWP, PDF 파일을 분기 처리하여 Markdown으로 변환하고 DB에 저장합니다.
 
@@ -542,4 +542,4 @@ class DocumentProcessor:
             return self.process_pdf(doc_path, doc_name)
         else:
             self.logger.error(f"지원하지 않는 파일 형식: {file_ext}")
-            return None
+            return None, False
