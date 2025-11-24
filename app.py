@@ -552,20 +552,25 @@ elif selected_tab == "문서 검색":
     if search_button:
         if search_query:
             st.info(f"'{search_query}' 검색 중...")
-            # TODO: 실제 검색 로직 구현
-            # TODO: 검색 결과에 다음 정보 포함:
-            #   - 문서 제목/파일명
-            #   - 매칭된 페이지 번호 (page_number)
-            #   - 해당 페이지의 텍스트 스니펫 (하이라이트)
-            #   - 유사도 점수
-            # 예시 결과 형식:
-            # {
-            #   "document": "제안요청서_2024.pdf",
-            #   "page": 15,
-            #   "snippet": "...검색어가 포함된 텍스트...",
-            #   "score": 0.95
-            # }
-            st.success("검색 완료! (검색 기능 구현 예정)")
+            embedding_result = llm_retrieval.search(query=search_query, top_k=top_k)
+            print_dic_tree(embedding_result)
+            
+            st.success(f"검색 완료! {len(embedding_result)}개 결과")
+            
+            # 검색 결과 표시
+            for idx, result in enumerate(embedding_result, 1):
+                file_name = result.get('file_name', '파일명 없음')
+                distance = result.get('distance', 0)
+                similarity_pct = max(0, (2.0 - distance) / 2.0 * 100)  # 거리 기반 유사도 변환
+                start_page = result.get('start_page', '?')
+                end_page = result.get('end_page', '?')
+                text_snippet = result.get('text', '')[:200]  # 텍스트 미리보기 200자
+                
+                with st.expander(f"[{idx}] {file_name} (페이지 {start_page}-{end_page})"):
+                    st.metric("유사도", f"{similarity_pct:.1f}%")
+                    st.markdown(f"**거리 값**: {distance:.4f}")
+                    st.markdown(f"**내용 미리보기**:")
+                    st.text(text_snippet)
         else:
             st.warning("검색어를 입력해주세요.")
     
