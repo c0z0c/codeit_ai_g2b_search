@@ -7,9 +7,10 @@ from pathlib import Path
 import re
 from venv import logger
 import requests
-from typing import Callable, Dict, List, Optional, Tuple
+import tempfile
 import tiktoken
 from tqdm import tqdm
+from typing import Callable, Dict, List, Optional, Tuple
 import urllib.parse
 
 # PDF 처리 라이브러리
@@ -627,7 +628,7 @@ class DocumentProcessor:
 
         Returns:
             List[Dict]: 조회된 입찰 공고 정보 항목 리스트
-        
+
         Raises:
             ValueError: 날짜 형식 오류.
         """
@@ -720,8 +721,7 @@ class DocumentProcessor:
         Args:
             file_urls: 다운로드할 파일들의 URL 리스트.
             save_dir: 파일을 저장할 디렉토리 경로.
-                      지정하지 않으면 현재 작업 디렉토리의 "temp" 폴더에 저장됩니다.
-
+                      지정하지 않으면 **tempfile.mkdtemp()**를 사용하여 임시 디렉토리에 저장.
         Returns:
             List[Path]: 저장된 파일들의 전체 경로 리스트.
 
@@ -734,14 +734,18 @@ class DocumentProcessor:
 
         # 디렉토리 설정 및 생성
         if not save_dir:
-            save_dir = Path(os.getcwd()) / "temp"
-        else:
-            save_dir = Path(save_dir)
+            save_dir = Path(tempfile.mkdtemp())
+            temp_dir_created = True
+            self.logger.info(f"임시 디렉토리 생성: {save_dir.resolve()}")
 
-        save_dir.mkdir(parents=True, exist_ok=True)
+        save_dir_path = Path(save_dir)
+
+        if not temp_dir_created:
+            save_dir_path.mkdir(parents=True, exist_ok=True)
+
         self.logger.info(f"파일 저장 디렉토리: {save_dir.resolve()}")
 
-        saved_file_paths = []
+        saved_file_paths: List[Path] = []
 
         for i, file_url in enumerate(file_urls):
             self.logger.info(f"[{i+1}/{len(file_urls)}] 다운로드 시작: {file_url}")
@@ -804,19 +808,19 @@ class DocumentProcessor:
         self.logger.info(f"총 {len(file_urls)}개 파일 중 {len(saved_file_paths)}개 파일 저장 완료.")
         return saved_file_paths
 
-    def cleanup_files(self, file_paths: List[Path]):
+    def cleanup_files(self, saved_file_paths: List[Path]):
         """
         다운로드된 임시 파일들을 삭제합니다.
 
         Args:
-            file_paths: 삭제할 파일의 Path 객체 리스트
+            saved_file_paths: 삭제할 파일의 Path 객체 리스트
         """
-        if not file_paths:
+        if not saved_file_paths:
             return
 
-        self.logger.info(f"임시 파일 {len(file_paths)}개 삭제 시작...")
+        self.logger.info(f"임시 파일 {len(saved_file_paths)}개 삭제 시작...")
 
-        for path in file_paths:
+        for path in saved_file_paths:
             try:
                 if path.exists() and path.is_file():
                     path.unlink()  # 임시 파일 삭제
