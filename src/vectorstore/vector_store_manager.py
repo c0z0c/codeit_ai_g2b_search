@@ -962,3 +962,57 @@ class VectorStoreManager:
             self.logger.info(f"{display_name:<40} {display_hash:<12} {count:>10,}")
         
         self.logger.info("=" * 80)
+        
+    def all_summary(self) -> Optional[Dict[str, Any]]:
+        """
+        벡터스토어의 현재 상태를 테이블 형식으로 출력합니다.
+        
+        출력 정보:
+        - 기본 정보: 벡터 수, 임베딩 모델, 차원, 파일 경로, 청크 개수, 토탈 사이즈
+        - 메타데이터 통계: file_hash별 벡터 수 분포
+        - 인덱스 정보: 차원, 인덱스 타입
+        """
+        if self.vectorstore is None:
+            if not self.load():
+                self.logger.warning("로드할 벡터스토어가 없습니다.")
+                return {}
+        
+        result = {}
+        # 1. 기본 정보
+        vector_count = self.vectorstore.index.ntotal
+        dimension = self.vectorstore.index.d
+        index_type = type(self.vectorstore.index).__name__
+        
+        # 파일 사이즈 계산
+        faiss_file = self.vector_path.parent / f"{self.vector_path.stem}.faiss"
+        pkl_file = self.vector_path.parent / f"{self.vector_path.stem}.pkl"
+        
+        total_size_bytes = 0
+        if faiss_file.exists():
+            total_size_bytes += faiss_file.stat().st_size
+        if pkl_file.exists():
+            total_size_bytes += pkl_file.stat().st_size
+        
+        total_size_mb = total_size_bytes / (1024 * 1024)
+        
+        self.logger.info("=" * 80)
+        self.logger.info("VectorStore Summary")
+        self.logger.info("=" * 80)
+        self.logger.info(f"벡터 수 (Vector Count)       : {vector_count:,}")
+        self.logger.info(f"청크 개수 (Chunk Count)       : {vector_count:,}")
+        self.logger.info(f"차원 (Dimension)              : {dimension}")
+        self.logger.info(f"인덱스 타입 (Index Type)      : {index_type}")
+        self.logger.info(f"임베딩 모델 (Embedding Model) : {self.embedding_model}")
+        self.logger.info(f"파일 경로 (File Path)         : {self.vector_path}")
+        self.logger.info(f"토탈 사이즈 (Total Size)      : {total_size_mb:.2f} MB")
+        
+        result = {
+            "vector_count": vector_count,
+            "chunk_count": vector_count,
+            "dimension": dimension,
+            "embedding_model": self.embedding_model,
+            "total_size_mb": round(total_size_mb, 2)
+        }
+        
+        return result
+            

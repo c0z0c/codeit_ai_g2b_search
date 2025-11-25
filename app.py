@@ -306,8 +306,9 @@ with st.sidebar:
             st.error("날짜 범위가 유효하지 않습니다.")
         else:
             # 날짜를 YYYYMMDD 형식 문자열로 변환
-            start_date_str = start_date.strftime("%Y%m%d")
-            end_date_str = end_date.strftime("%Y%m%d")
+            start_date_str = start_date.strftime("%Y%m%d1400")
+            end_date_str = end_date.strftime("%Y%m%d2359")
+            
             
             logger.info(f"데이터 포털 업데이트 시작: {start_date_str} ~ {end_date_str}")
             logger.info(f"DATA_GO_KR_SERVICE_KEY: {config.DATA_GO_KR_SERVICE_KEY}")
@@ -332,12 +333,14 @@ with st.sidebar:
         doc_stats = dbs['docs'].get_document_stats()
         #embedding_stats = dbs['embeddings'].get_embedding_stats()
         col1, col2 = st.columns(2)
+        vm_result = proc_emb.vector_manager.all_summary()
+        
         with col1:
             st.metric("문서 수", f"{doc_stats.get('total_files', 0)}")
             st.metric("페이지 수", f"{doc_stats.get('total_pages', 0)}")
-        with col2:
-            st.metric("토큰 수", f"{doc_stats.get('total_tokens', 0)}")
-            st.metric("파일 크기", f"{doc_stats.get('total_size', 0)} bytes")
+        if vm_result:
+             st.metric("청큰 수", f"{vm_result.get('chunk_count', 0)}")
+             st.metric("파일 크기", f"{vm_result.get('total_size_mb', 0)} M bytes")
     except Exception as e:
         st.warning(f"데이터 통계 로드 실패: {str(e)}")
         st.info("더미 데이터를 생성하려면 '더미 데이터 생성' 버튼을 클릭하세요.")

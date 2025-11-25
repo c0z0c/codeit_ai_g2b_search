@@ -640,8 +640,10 @@ class DocumentProcessor:
             raise ValueError("날짜 형식 오류: YYYYMMDD 또는 YYYYMMDDHHMM 형식이어야 합니다.")
 
         # YYYYMMDD 형식일 때 시간 추가
-        start_date += '0000' if len(start_date) == 8 else start_date
-        end_date += '2359' if len(end_date) == 8 else end_date
+        if len(start_date) == 8:
+            start_date += '0000'
+        if len(end_date) == 8:
+            end_date += '2359'
 
         # 날짜 변환
         start_dt = datetime.strptime(start_date, "%Y%m%d%H%M")
