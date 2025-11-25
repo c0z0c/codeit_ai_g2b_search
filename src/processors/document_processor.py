@@ -663,7 +663,7 @@ class DocumentProcessor:
 
             api_url = (
                 f"https://apis.data.go.kr/1230000/ad/BidPublicInfoService/"
-                f"getBidPblancListPPIFnlRfpIssAtchFileInfo"
+                f"getBidPblancListInfoCnstwk"
                 f"?pageNo={page_no}"
                 f"&numOfRows={num_of_rows_per_page}"
                 f"&inqryDiv={inqry_div}"
