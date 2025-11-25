@@ -547,8 +547,8 @@ class DocumentProcessor:
 
         if file_ext == '.hwp':
             return self.process_hwp(doc_path, doc_name)
-        # elif file_ext == '.pdf':
-        #     return self.process_pdf(doc_path, doc_name)
+        elif file_ext == '.pdf':
+            return self.process_pdf(doc_path, doc_name)
         else:
             self.logger.error(f"지원하지 않는 파일 형식: {file_ext}")
             return None, False
@@ -915,9 +915,9 @@ class DocumentProcessor:
             # 5. 다운로드 파일 후처리
             for fpath in downloaded_files:
                 ext = fpath.suffix.lower()
-                if ext == '.pdf':
-                    file_hash, result = self.process_pdf(str(fpath))
-                elif ext == '.hwp':
+                # if ext == '.pdf':
+                #     file_hash, result = self.process_pdf(str(fpath))
+                if ext == '.hwp':
                     file_hash, result = self.process_hwp(str(fpath))
                 else:
                     self.logger.error(f"현재 처리할 수 없는 파일 형식: {ext}")
