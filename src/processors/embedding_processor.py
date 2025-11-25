@@ -68,13 +68,13 @@ class EmbeddingProcessor:
         self.docs_db = DocumentsDB(self.config.DOCUMENTS_DB_PATH)
         
         # VectorStoreManager 초기화
-        try:
-            self.vector_manager = VectorStoreManager(config=self.config)
-            self.vector_manager.load()
-        except ImportError as e:
-            self.logger.error(f"VectorStoreManager 초기화 실패: {e}")
-            self.vector_manager = None
-            raise ValueError("VectorStoreManager 초기화 실패") from e
+        #try:
+        self.vector_manager = VectorStoreManager(config=self.config)
+        self.vector_manager.load()
+        # except ImportError as e:
+        #     self.logger.error(f"VectorStoreManager 초기화 실패: {e}")
+        #     self.vector_manager = None
+        #     raise ValueError("VectorStoreManager 초기화 실패") from e
             
         # LangChain 텍스트 스플리터 초기화
         if LANGCHAIN_AVAILABLE:
