@@ -43,6 +43,10 @@ stringzilla==4.2.1
 pymupdf==1.26.6
 pymupdf4llm==0.2.0
 pypdf==6.2.0
+
+# HWP processing (Requires Rust and Java - see INSTALL_UBUNTU.md)
+# Rust 설치 필요: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# Java 설치 필요: sudo apt-get install default-jdk
 helper-hwp==0.5.1
 libhwp==0.2.0
 pyhwp==0.1b15
