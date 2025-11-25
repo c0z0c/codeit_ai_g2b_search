@@ -330,11 +330,13 @@ class Retrieval:
             'file_name': best_page_data['file_name'],
             'file_hash': best_page_data['file_hash'],
             'page_number': best_page_data['page_number'],
+            'text' : best_page_data['text'],
             'score': best_page_data['score']
         } if best_page_data else {
             'file_name': '',
             'file_hash': '',
             'page_number': -1,
+            'text': '',
             'score': float('inf')
         }
         

@@ -45,6 +45,10 @@ from src.llm import llm_processor
 importlib.reload(llm_processor)
 from src.llm import llm_processor
 
+from src.llm import rag_evaluator
+importlib.reload(rag_evaluator)
+from src.llm import rag_evaluator
+
 from src.db  import chat_history_db
 importlib.reload(chat_history_db)
 from src.db import chat_history_db
@@ -63,6 +67,7 @@ from src.llm import retrieval
 from src.llm.retrieval import Retrieval
 from src.llm import llm_processor
 from src.llm.llm_processor import LLMProcessor
+from src.llm.rag_evaluator import RAGEvaluator
 
 from src.ui.sidebar_scroll import scroll_sidebar_for_tab, add_section_anchor
 from src.ui.streamlit_styling import load_css, apply_default_styling
@@ -95,7 +100,7 @@ def init_config():
         cfg = get_config()
 
     openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    data_portal_api_key = os.getenv("DATA_PORTAL_API_KEY", "").strip()
+    data_go_kr_service_key = os.getenv("DATA_GO_KR_SERVICE_KEY", "").strip()
     
     if openai_api_key:
         openai_api_key = openai_api_key.strip()
@@ -103,14 +108,14 @@ def init_config():
     else:
         logger.warning("OpenAI API 키 필요")
 
-    if data_portal_api_key:
-        data_portal_api_key = data_portal_api_key.strip()
-        os.environ["DATA_PORTAL_API_KEY"] = data_portal_api_key
+    if data_go_kr_service_key:
+        data_go_kr_service_key = data_go_kr_service_key.strip()
+        os.environ["DATA_GO_KR_SERVICE_KEY"] = data_go_kr_service_key
     else:
         logger.warning("Data Portal API 키 필요")
 
     cfg.OPENAI_API_KEY = openai_api_key
-    cfg.DATAPORTAL_API_KEY = data_portal_api_key
+    cfg.DATA_GO_KR_SERVICE_KEY = data_go_kr_service_key
     # cfg.DOCUMENTS_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "documents.db")
     # cfg.EMBEDDINGS_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "embeddings.db")
     # cfg.CHAT_HISTORY_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "chat_history.db")
@@ -148,8 +153,8 @@ if 'api_key' not in st.session_state:
     st.session_state.api_key = os.getenv('OPENAI_API_KEY', '').strip()
 
 # Data Portal API Key 초기화 및 검증
-if 'data_portal_api_key' not in st.session_state:
-    st.session_state.data_portal_api_key = os.getenv('DATA_PORTAL_API_KEY', '').strip()
+if 'data_go_kr_service_key' not in st.session_state:
+    st.session_state.data_go_kr_service_key = os.getenv('DATA_GO_KR_SERVICE_KEY', '').strip()
 
 # ------------------------------------------------------------------------------------------------
 # 프로세서 초기화
@@ -213,6 +218,7 @@ def init_process():
         'proc_doc': DocumentProcessor(config=config),
         'proc_emb': EmbeddingProcessor(config=config),
         'llm_retrieval': Retrieval(config=config),
+        'rag_evaluator': RAGEvaluator(api_key="gpt-5"),
     }
 
 if 'processes' not in st.session_state:
@@ -271,7 +277,7 @@ with st.sidebar:
         with col1:
             start_date = st.date_input(
                 "시작 날짜",
-                value=datetime.now() - timedelta(days=7),
+                value=datetime.now() - timedelta(days=0),
                 max_value=datetime.now(),
                 key="update_start_date"
             )
@@ -289,11 +295,11 @@ with st.sidebar:
 
         # data 키 값 입력
         data_key = st.text_input("데이터 포털 API Key",
-                             value=st.session_state.data_portal_api_key,
+                             value=st.session_state.data_go_kr_service_key,
                              type="password",
                              key="data_portal_api_key_input"
                              )
-
+        config.DATA_GO_KR_SERVICE_KEY = data_key
     # 업데이트 버튼
     if st.button("데이터 포털 사이트 업데이트", use_container_width=True, key="btn_update_data_portal"):
         if start_date > end_date:
@@ -304,10 +310,13 @@ with st.sidebar:
             end_date_str = end_date.strftime("%Y%m%d")
             
             logger.info(f"데이터 포털 업데이트 시작: {start_date_str} ~ {end_date_str}")
-            file_hash, result = proc_doc.process_date(config.DATAPORTAL_API_KEY, start_date_str, end_date_str)
+            logger.info(f"DATA_GO_KR_SERVICE_KEY: {config.DATA_GO_KR_SERVICE_KEY}")
+            
+            file_hash, result_bool = proc_doc.process_date(config.DATA_GO_KR_SERVICE_KEY, start_date_str, end_date_str)
             proc_emb.sync_with_docs_db(config.OPENAI_API_KEY)
-            print_dic_tree(result)
-            logger.debug(f"Data Portal: {result[:10]}")
+            proc_emb.vector_manager.summary()
+            #print_dic_tree(result_bool)
+            logger.debug(f"Data Portal: {file_hash}")
             
             st.success(f"데이터 포털 사이트를 성공적으로 업데이트했습니다. ({start_date_str} ~ {end_date_str})")
             # except Exception as e:
@@ -584,6 +593,15 @@ if selected_tab == "AI 채팅":
             st.session_state.session_needs_rename = False
             logger.info(f"세션 이름 변경: {new_session_name}")
             st.rerun()
+            
+        # TODO  평가 버튼 추가 예정
+        # if embedding_result and 'best_page' in embedding_result:
+        #   best_page = embedding_result['best_page']
+        #   if best_page and 'text' in best_page:
+        #       doc_text = best_page['text']
+        #       rag_evaluator.evaluate(query=query, doc_text=doc_text, query_result=None)
+        #   else:
+        #       
 
     # ============================================================================================
 

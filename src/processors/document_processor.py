@@ -12,6 +12,8 @@ import tiktoken
 from tqdm import tqdm
 from typing import Callable, Dict, List, Optional, Tuple
 import urllib.parse
+from src.utils.helper_utils import *
+from src.utils.helper_c0z0c_dev import *
 
 # PDF 처리 라이브러리
 try:
@@ -545,8 +547,8 @@ class DocumentProcessor:
 
         if file_ext == '.hwp':
             return self.process_hwp(doc_path, doc_name)
-        elif file_ext == '.pdf':
-            return self.process_pdf(doc_path, doc_name)
+        # elif file_ext == '.pdf':
+        #     return self.process_pdf(doc_path, doc_name)
         else:
             self.logger.error(f"지원하지 않는 파일 형식: {file_ext}")
             return None, False
@@ -611,7 +613,7 @@ class DocumentProcessor:
         bid_ntce_no: Optional[str] = '',
         page_no: int = 1,
         inqry_div: Optional[int] = 1,
-        num_of_rows_per_page: int = 100
+        num_of_rows_per_page: int = 500
     ) -> List[Dict]:
         """
         날짜 범위 및 페이지네이션을 처리하며 입찰 공고 정보를 조회합니다.
@@ -661,34 +663,57 @@ class DocumentProcessor:
 
             self.logger.debug(f"API 호출: {current_start_str} ~ {current_end_str}")
 
-            api_url = (
-                f"https://apis.data.go.kr/1230000/ad/BidPublicInfoService/"
-                f"getBidPblancListInfoCnstwk"
-                f"?pageNo={page_no}"
-                f"&numOfRows={num_of_rows_per_page}"
-                f"&inqryDiv={inqry_div}"
-                f"&type=json"
-                f"&bidNtceNo={bid_ntce_no}"
-                f"&inqryBgnDt={current_start_str}"
-                f"&inqryEndDt={current_end_str}"
-            )
+            # 모든 페이지 가져오기``
+            while True:
+                api_url = (
+                    f"https://apis.data.go.kr/1230000/ad/BidPublicInfoService/"
+                    f"getBidPblancListInfoCnstwk"
+                    f"?pageNo={page_no}"
+                    f"&numOfRows={num_of_rows_per_page}"
+                    f"&inqryDiv={inqry_div}"
+                    f"&type=json"
+                    f"&bidNtceNo={bid_ntce_no}"
+                    f"&inqryBgnDt={current_start_str}"
+                    f"&inqryEndDt={current_end_str}"
+                )
+                
+                # api_url=(
+                #     f"https://apis.data.go.kr/1230000/ad/BidPublicInfoService/"
+                #     f"getBidPblancListInfoCnstwk"
+                #     f"?pageNo={page_no}"
+                #     f"&numOfRows={num_of_rows_per_page}"
+                #     f"&inqryDiv={inqry_div}"
+                #     f"&type=json"
+                #     f"&bidNtceNo={bid_ntce_no}"
+                #     f"&inqryBgnDt={current_start_str}"
+                #     f"&inqryEndDt={current_end_str}"
+                # )
+                
+                self.logger.debug(f"생성된 API URL: ...{api_url[-100:]}")
+                self.logger.debug(f"service_key: {service_key}")
 
-            # API 호출
-            try:
+                # API 호출
+                # try:
                 data = self.get_data_go_kr(
                                 api_url=api_url,
                                 service_key=service_key,
                                 timeout=10
                 )
+                
+                #print_dic_tree(data, list_count=11)
                 items = data.get('response', {}).get('body', {}).get('items', {})
-                if items:
+                #print_dic_tree(items)
+                # self.logger.info(f"0 -- {current_start_str} ~ {current_end_str}: {len(items)}건 조회")
+                if len(items) > 0:
                     merged_results.extend(items)
-                    logger.info(f"{current_start_str} ~ {current_end_str}: {len(items)}건 조회")
+                    self.logger.info(f"{current_start_str} ~ {current_end_str} {page_no}: {len(items)}건 조회")
+                    page_no = page_no + 1
+                    if num_of_rows_per_page != len(items):
+                        self.logger.info(f"{current_start_str} ~ {current_end_str} {page_no} End Page: {len(items)}건 조회")
+                        break  # 마지막 페이지 도달
                 else:
-                    logger.info(f"{current_start_str} ~ {current_end_str}: 조회된 문서 없음")
-            except Exception as e:
-                logger.error(f"API 호출 실패: {e}")
-                raise
+                    self.logger.info(f"{current_start_str} ~ {current_end_str} {page_no}: 조회된 문서 없음")
+                    break
 
             current_start = current_end + timedelta(minutes=1)
 
@@ -706,9 +731,17 @@ class DocumentProcessor:
         """
         file_urls = []
         for item in items:
-            file_url = item.get('atchFileUrl')
-            if file_url and isinstance(file_url, str) and file_url.strip():
-                file_urls.append(file_url.strip())
+            # 공고문서 API
+            for idx in range(1, 10):
+                file_url_key = f'ntceSpecDocUrl{idx}'
+                file_url = item.get(file_url_key)
+                if file_url and isinstance(file_url, str) and file_url.strip():
+                    file_urls.append(file_url.strip())
+
+            # 제안요청서 API
+            # file_url = item.get('atchFileUrl')
+            # if file_url and isinstance(file_url, str) and file_url.strip():
+            #     file_urls.append(file_url.strip())
 
         self.logger.info(f"전체 {len(items)}건 중 유효한 파일 URL {len(file_urls)}개 추출.")
         return list(set(file_urls))  # 중복 제거
@@ -833,7 +866,7 @@ class DocumentProcessor:
 
         self.logger.info("임시 파일 정리 완료.")
 
-    def process_date(self, data_key: str, start_date: str, end_date: str) -> bool:
+    def process_date(self, data_key: str, start_date: str, end_date: str) -> Tuple[Optional[str], bool]:
         """
         [메인 실행 함수]
         1. data_key(인증키) 검증
@@ -847,49 +880,56 @@ class DocumentProcessor:
             start_date: 검색 시작일 (YYYYMMDD)
             end_date: 검색 종료일 (YYYYMMDD)
         """
+        
+        file_hash = None
+        result = False
         # 1. 권한 요소(data_key) 검증
         if not data_key or not isinstance(data_key, str):
             self.logger.error("유효하지 않은 data_key이므로 검색 권한이 없습니다.")
-            return False
+            return file_hash, result
 
         self.logger.info(f"프로세스 시작: {start_date} ~ {end_date}")
 
-        try:
-            # 2. 입찰 공고 조회 (Service Key 전달)
-            # data_key를 service_key 파라미터로 명시적으로 전달하여 API 권한을 획득합니다.
-            bid_items = self.get_bid_file_info(
-                start_date=start_date,
-                end_date=end_date,
-                service_key=data_key
-            )
+        # try:
+        # 2. 입찰 공고 조회 (Service Key 전달)
+        # data_key를 service_key 파라미터로 명시적으로 전달하여 API 권한을 획득합니다.
+        bid_items = self.get_bid_file_info(
+            start_date=start_date,
+            end_date=end_date,
+            service_key=data_key
+        )
+        
+        self.logger.info(f"총 {len(bid_items)}개의 입찰 공고 항목 조회 완료.")
 
-            if not bid_items:
-                self.logger.info("해당 기간에 조회된 입찰 공고가 없습니다.")
-                return True
+        if not bid_items:
+            self.logger.info("해당 기간에 조회된 입찰 공고가 없습니다.")
+            return file_hash, result
 
-            # 3. URL 추출
-            file_urls = self.extract_file_url(bid_items)
-            self.logger.info(f"총 {len(file_urls)}개의 첨부파일 URL 발견.")
+        # 3. URL 추출
+        file_urls = self.extract_file_url(bid_items)
+        self.logger.info(f"총 {len(file_urls)}개의 첨부파일 URL 발견.")
 
-            # 4. 파일 다운로드
-            if file_urls:
-                downloaded_files = self.download_file(file_urls)
-                # 5. 다운로드 파일 후처리
-                for fpath in downloaded_files:
-                    ext = fpath.suffix.lower()
-                    if ext == '.pdf':
-                        self.process_pdf(str(fpath))
-                    elif ext == '.hwp':
-                        self.process_hwp(str(fpath))
-                    else:
-                        self.logger.error(f"현재 처리할 수 없는 파일 형식: {ext}")
+        # 4. 파일 다운로드
+        if file_urls:
+            downloaded_files = self.download_file(file_urls)
+            # 5. 다운로드 파일 후처리
+            for fpath in downloaded_files:
+                ext = fpath.suffix.lower()
+                if ext == '.pdf':
+                    file_hash, result = self.process_pdf(str(fpath))
+                elif ext == '.hwp':
+                    file_hash, result = self.process_hwp(str(fpath))
+                else:
+                    self.logger.error(f"현재 처리할 수 없는 파일 형식: {ext}")
             self.cleanup_files(downloaded_files)
             self.logger.info("해당 기간의 문서를 처리하여 DB에 저장 완료 및 임시 파일 제거.")
-            return True
+        else:
+            self.logger.info("다운로드할 파일 URL이 없습니다.")
+        return file_hash, result
 
-        except ValueError as ve:
-            self.logger.error(f"검증 오류 발생: {ve}")
-            return False
-        except Exception as e:
-            self.logger.critical(f"시스템 치명적 오류 발생: {e}", exc_info=True)
-            return False
+        # except ValueError as ve:
+        #     self.logger.error(f"검증 오류 발생: {ve}")
+        #     return file_hash, result
+        # except Exception as e:
+        #     self.logger.critical(f"시스템 치명적 오류 발생: {e}", exc_info=True)
+        #     return file_hash, result

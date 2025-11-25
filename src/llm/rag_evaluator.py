@@ -11,7 +11,7 @@ class RAGEvaluator:
     기존 함수 evaluate_rag_performance()를 클래스 내부 메서드로 통합한 버전.
     """
 
-    def __init__(self, api_key: str, model_id: str = "gpt-4o-mini"):
+    def __init__(self, api_key: str, model_id: str = "gpt-5"):
         """
         OpenAI 클라이언트 초기화
         """
