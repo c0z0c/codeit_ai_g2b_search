@@ -95,14 +95,22 @@ def init_config():
         cfg = get_config()
 
     openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    data_portal_api_key = os.getenv("DATA_PORTAL_API_KEY", "").strip()
     
     if openai_api_key:
         openai_api_key = openai_api_key.strip()
         os.environ["OPENAI_API_KEY"] = openai_api_key
     else:
-        logger.warning("OpenAI API 키 필요")    
+        logger.warning("OpenAI API 키 필요")
+
+    if data_portal_api_key:
+        data_portal_api_key = data_portal_api_key.strip()
+        os.environ["DATA_PORTAL_API_KEY"] = data_portal_api_key
+    else:
+        logger.warning("Data Portal API 키 필요")
 
     cfg.OPENAI_API_KEY = openai_api_key
+    cfg.DATAPORTAL_API_KEY = data_portal_api_key
     # cfg.DOCUMENTS_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "documents.db")
     # cfg.EMBEDDINGS_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "embeddings.db")
     # cfg.CHAT_HISTORY_DB_PATH = str(PROJECT_ROOT_PATH / "data" / "chat_history.db")
@@ -138,6 +146,10 @@ if 'messages' not in st.session_state:
 # API Key 초기화 및 검증
 if 'api_key' not in st.session_state:
     st.session_state.api_key = os.getenv('OPENAI_API_KEY', '').strip()
+
+# Data Portal API Key 초기화 및 검증
+if 'data_portal_api_key' not in st.session_state:
+    st.session_state.data_portal_api_key = os.getenv('DATA_PORTAL_API_KEY', '').strip()
 
 # ------------------------------------------------------------------------------------------------
 # 프로세서 초기화
@@ -280,11 +292,12 @@ with st.sidebar:
         if start_date > end_date:
             st.error("날짜 범위가 유효하지 않습니다.")
         else:
+            # data portal key값을 입력해야할까?
             try:
                 logger.info(f"데이터 포털 업데이트 시작: {start_date} ~ {end_date}")
-                # TODO: proc_doc.process_doc() 호출 시 날짜 범위 전달
-                # file_hash, result = proc_doc.process_doc(start_date=start_date, end_date=end_date)
-                # proc_emb.sync_with_docs_db(config.OPENAI_API_KEY)
+                # proc_doc.process_date() 호출 시 날짜 범위 전달 proc_doc.process_???
+                file_hash, result = proc_doc.process_date(start_date=start_date, end_date=end_date)
+                proc_emb.sync_with_docs_db(config.OPENAI_API_KEY)
                 
                 st.success(f"데이터 포털 사이트를 성공적으로 업데이트했습니다. ({start_date} ~ {end_date})")
             except Exception as e:
@@ -298,7 +311,7 @@ with st.sidebar:
     try:
         logger.debug("데이터 통계 로드 시도...")
         doc_stats = dbs['docs'].get_document_stats()
-        #embedding_stats = dbs['embeddings'].get_embedding_stats() 데이터 통계 로드 실패로 임시주석처리
+        #embedding_stats = dbs['embeddings'].get_embedding_stats()
         col1, col2 = st.columns(2)
         with col1:
             st.metric("문서 수", f"{doc_stats.get('total_files', 0)}")
@@ -313,7 +326,7 @@ with st.sidebar:
     st.divider()
 
     add_section_anchor("document-search-section")
-    st.title("업로드할 파일 선택 ") # 지금은 PDF파일만 업로드하고 추후 다양한 포맷 지원 예정
+    st.title("업로드할 파일 선택 ")
 
     # 파일 업로드 버튼 추가
     uploaded_file = st.file_uploader(
@@ -551,6 +564,16 @@ if selected_tab == "AI 채팅":
         st.session_state.messages.append({"role": "assistant", "content": llm_res})
         with st.chat_message("assistant"):
             st.markdown(llm_res)
+        
+        # 첫 사용자 메시지로 세션 이름 변경
+        if st.session_state.session_needs_rename:
+            # 세션 이름을 사용자 메시지로 설정 (최대 50자)
+            new_session_name = prompt[:50] + ("..." if len(prompt) > 50 else "")
+            dbs['chat'].update_session_name(st.session_state.session_id, new_session_name)
+            st.session_state.selected_session = new_session_name
+            st.session_state.session_needs_rename = False
+            logger.info(f"세션 이름 변경: {new_session_name}")
+            st.rerun()
 
     # ============================================================================================
 
@@ -592,15 +615,11 @@ elif selected_tab == "문서 검색":
         else:
             st.warning("검색어를 입력해주세요.")
 
-    
     # TODO: 검색 결과 표시 예시
     # for result in search_results:
     #     with st.expander(f"{result['document']} - 페이지 {result['page']}"):
     #         st.markdown(f"**유사도:** {result['score']:.2%}")
     #         st.markdown(f"**내용:** {result['snippet']}")
     #         st.markdown(f"[원본 페이지로 이동 →](#page-{result['page']})")
-
-    
-# 실행 예시: Streamlit을 실행하면 왼쪽에 "설정 및 세션" 제목이 있는 사이드바가 보입니다.
 # ------- 사이드바  끝 구간 -------
 

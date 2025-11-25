@@ -160,6 +160,27 @@ class ChatHistoryDB:
                 'assistant_messages': assistant_messages
             }
 
+    def update_session_name(self, session_id: str, new_name: str) -> bool:
+        """
+        세션 이름을 업데이트.
+        :param session_id: 업데이트할 세션 ID
+        :param new_name: 새로운 세션 이름
+        :return: 업데이트 성공 여부
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE chat_sessions
+                    SET session_name = ?, updated_at = ?
+                    WHERE session_id = ?
+                """, (new_name, datetime.now(), session_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"세션 이름 업데이트 중 오류 발생: {e}")
+            return False
+
     def delete_session(self, session_id: str) -> bool:
         """
         특정 세션과 관련된 모든 메시지를 삭제.
