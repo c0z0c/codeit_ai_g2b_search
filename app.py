@@ -282,27 +282,37 @@ with st.sidebar:
                 max_value=datetime.now(),
                 key="update_end_date"
             )
-        
+    
         # 날짜 유효성 검사
         if start_date > end_date:
             st.error("시작 날짜는 종료 날짜보다 이전이어야 합니다.")
+
+        # data 키 값 입력
+        data_key = st.text_input("데이터 포털 API Key",
+                             value=st.session_state.data_portal_api_key,
+                             type="password",
+                             key="data_portal_api_key_input"
+                             )
 
     # 업데이트 버튼
     if st.button("데이터 포털 사이트 업데이트", use_container_width=True, key="btn_update_data_portal"):
         if start_date > end_date:
             st.error("날짜 범위가 유효하지 않습니다.")
         else:
-            # data portal key값을 입력해야할까?
-            try:
-                logger.info(f"데이터 포털 업데이트 시작: {start_date} ~ {end_date}")
-                # proc_doc.process_date() 호출 시 날짜 범위 전달 proc_doc.process_???
-                file_hash, result = proc_doc.process_date(start_date=start_date, end_date=end_date)
-                proc_emb.sync_with_docs_db(config.OPENAI_API_KEY)
-                
-                st.success(f"데이터 포털 사이트를 성공적으로 업데이트했습니다. ({start_date} ~ {end_date})")
-            except Exception as e:
-                logger.error(f"데이터 포털 업데이트 실패: {str(e)}")
-                st.error(f"데이터 포털 업데이트에 실패했습니다: {str(e)}")
+            # 날짜를 YYYYMMDD 형식 문자열로 변환
+            start_date_str = start_date.strftime("%Y%m%d")
+            end_date_str = end_date.strftime("%Y%m%d")
+            
+            logger.info(f"데이터 포털 업데이트 시작: {start_date_str} ~ {end_date_str}")
+            file_hash, result = proc_doc.process_date(config.DATAPORTAL_API_KEY, start_date_str, end_date_str)
+            proc_emb.sync_with_docs_db(config.OPENAI_API_KEY)
+            print_dic_tree(result)
+            logger.debug(f"Data Portal: {result[:10]}")
+            
+            st.success(f"데이터 포털 사이트를 성공적으로 업데이트했습니다. ({start_date_str} ~ {end_date_str})")
+            # except Exception as e:
+            #     logger.error(f"데이터 포털 업데이트 실패: {str(e)}")
+            #     st.error(f"데이터 포털 업데이트에 실패했습니다: {str(e)}")
 
 
     # 데이터 통계
@@ -583,6 +593,14 @@ elif selected_tab == "문서 검색":
     top_k = st.number_input("결과 수", min_value=1, max_value=20, value=5, key="top_k_input")
     
     # 검색어 입력과 버튼
+    # with st.expander("날짜 범위 선택", expanded=False):
+    #     col1, col2 = st.columns(2)
+    #     with col1:
+    #         search_query = st.text_input("검색어", key="doc_search_input", label_visibility="collapsed", placeholder="검색어를 입력하세요")
+
+    #     with col2:
+    #         search_button = st.button("검색", key="btn_search", use_container_width=True)
+            
     search_col1, search_col2 = st.columns([5, 1])
     with search_col1:
         search_query = st.text_input("검색어", key="doc_search_input", label_visibility="collapsed", placeholder="검색어를 입력하세요")
