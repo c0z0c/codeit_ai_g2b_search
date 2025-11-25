@@ -85,6 +85,17 @@ echo "[6/6] Conda 환경 생성 및 패키지 설치..."
 # Rust 경로를 현재 세션에 추가
 export PATH="$HOME/.cargo/bin:$PATH"
 
+# Conda가 설치되어 있는지 확인
+if ! command -v conda &> /dev/null; then
+    echo ""
+    echo "WARNING: Conda가 설치되어 있지 않습니다."
+    echo "다음 중 하나를 선택하세요:"
+    echo "  1) Anaconda/Miniconda 설치 후 다시 실행"
+    echo "  2) pip로 최소 환경 설치: pip install -r requirements-minimal.txt"
+    echo "  3) pip로 전체 환경 설치: pip install -r requirements.txt"
+    exit 1
+fi
+
 # Conda 환경이 이미 존재하는지 확인
 if conda env list | grep -q "^py310_openai "; then
     echo "py310_openai 환경이 이미 존재합니다. 업데이트를 진행합니다..."

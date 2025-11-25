@@ -26,7 +26,11 @@ except ImportError:
 
 from src.config import get_config, Config
 from src.utils.logging_config import get_logger
-
+try:
+    from langchain_core.documents import Document 
+except ImportError:
+    from langchain.schema import Document
+from typing import List, Tuple, Optional, Dict, Any
 
 class VectorStoreManager:
     """

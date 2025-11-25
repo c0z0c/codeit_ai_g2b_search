@@ -1,28 +1,108 @@
 # Ubuntu 22.04 서버 설치 가이드
 
-이 가이드는 Ubuntu 22.04 서버에서 `py310_openai` Conda 환경을 설치하는 방법을 설명합니다.
+이 가이드는 Ubuntu 22.04 서버에서 프로젝트 환경을 설치하는 방법을 설명합니다.
 
-## 사전 요구사항
+## 설치 옵션 선택
 
+프로젝트 요구사항에 따라 적합한 설치 방법을 선택하세요:
+
+1. **최소 환경 (권장 - 빠른 시작)** - Streamlit 앱 실행만 필요한 경우
+2. **pip 전용 환경** - Conda 없이 Python 3.10 가상환경 사용
+3. **Conda 전체 환경** - 개발 및 전체 기능 필요
+
+---
+
+## 옵션 1: 최소 환경 설치 (가장 빠름)
+
+Streamlit 앱 실행에 필요한 핵심 패키지만 설치합니다.
+
+```bash
+# 1. 저장소 클론
+cd /path/to/project
+
+# 2. 실행 권한 부여
+chmod +x install_minimal.sh
+
+# 3. 설치 실행
+./install_minimal.sh
+
+# 4. 앱 실행
+streamlit run app.py
+```
+
+**설치 시간:** 약 5-10분
+**디스크 용량:** 약 2-3GB
+
+**포함된 패키지:**
+- Streamlit, LangChain, OpenAI
+- FAISS, PyMuPDF
+- 기본 데이터 처리 라이브러리
+
+**제외된 기능:**
+- HWP 파일 처리
+- 고급 ML 모델 (PyTorch, Transformers)
+- 웹 스크래핑 도구
+
+---
+
+## 옵션 2: pip 전용 전체 환경
+
+Conda 없이 pip만 사용하여 전체 패키지를 설치합니다.
+
+### 사전 요구사항
+- Ubuntu 22.04 LTS
+- Python 3.10
+- sudo 권한
+
+### 설치 방법
+
+```bash
+# 1. Python 3.10 가상환경 생성 (선택사항)
+python3.10 -m venv venv
+source venv/bin/activate
+
+# 2. 실행 권한 부여
+chmod +x install_pip_only.sh
+
+# 3. 설치 스크립트 실행
+./install_pip_only.sh
+
+# 4. 앱 실행
+streamlit run app.py
+```
+
+**설치 시간:** 약 30-60분
+**디스크 용량:** 약 10-15GB
+
+---
+
+## 옵션 3: Conda 전체 환경
+
+개발 및 전체 기능을 위한 Conda 환경입니다.
+
+### 사전 요구사항
 - Ubuntu 22.04 LTS
 - Conda (Anaconda 또는 Miniconda)
 - sudo 권한
 
-## 자동 설치 (권장)
+### 설치 방법
 
 ```bash
-# 저장소 클론 또는 파일 업로드 후
-cd /path/to/codeit_ai_g2b_search
-
-# 실행 권한 부여
+# 1. 실행 권한 부여
 chmod +x install_ubuntu.sh
 
-# 설치 스크립트 실행
+# 2. 설치 스크립트 실행
 ./install_ubuntu.sh
 
-# 환경 활성화
+# 3. 환경 활성화
 conda activate py310_openai
+
+# 4. 앱 실행
+streamlit run app.py
 ```
+
+**설치 시간:** 약 30-60분
+**디스크 용량:** 약 10-15GB
 
 ## 수동 설치
 
