@@ -436,6 +436,8 @@ with st.sidebar:
         # 이미 처리된 파일
         st.info("파일이 처리되었습니다. 새 파일을 업로드하려면 기존 파일을 제거하세요.")
     
+    # llm_retrieval.vector_manager.summary()
+    
     # 처리 완료된 파일 정보 표시
     if st.session_state.file_upload_processed and 'last_file_details' in st.session_state:
         st.write("---")
