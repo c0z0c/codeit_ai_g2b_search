@@ -371,7 +371,7 @@ class DocumentProcessor:
     def markdown_with_progress_hwp(self, doc_path: str) -> Tuple[List[Dict], int]:
         """
         HWP를 Markdown 변환 (진행 상황 표시)
-        markdown을 읽으면서 80줄마다 페이지 데이터 저장
+        markdown을 읽으면서 40줄마다 페이지 데이터 저장
 
         Args:
             doc_path (str): HWP 파일 경로
