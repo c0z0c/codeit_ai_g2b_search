@@ -384,8 +384,8 @@ class DocumentProcessor:
         doc_name = Path(doc_path).name
         pages_data = []
 
-        # 한 페이지당 줄 수 설정
-        LINES_PER_PAGE = 80
+        # 한 페이지당 40 줄로 설정
+        LINES_PER_PAGE = 40
         total_pages = 0
 
         try:
@@ -403,8 +403,8 @@ class DocumentProcessor:
             else:
                 total_pages = (total_lines + LINES_PER_PAGE - 1) // LINES_PER_PAGE
 
-            # 4. 80줄 단위로 순회하며 처리
-            with tqdm(total=total_pages, desc="HWP to Markdown 80줄마다 페이지 분할", unit="page") as pbar:
+            # 4. 40줄 단위로 순회하며 처리
+            with tqdm(total=total_pages, desc="HWP to Markdown 40줄마다 페이지 분할", unit="page") as pbar:
                 for i in range(0, total_lines, LINES_PER_PAGE):
                     page_num = (i // LINES_PER_PAGE) + 1
 
@@ -678,19 +678,7 @@ class DocumentProcessor:
                     f"&inqryBgnDt={current_start_str}"
                     f"&inqryEndDt={current_end_str}"
                 )
-                
-                # api_url=(
-                #     f"https://apis.data.go.kr/1230000/ad/BidPublicInfoService/"
-                #     f"getBidPblancListInfoCnstwk"
-                #     f"?pageNo={page_no}"
-                #     f"&numOfRows={num_of_rows_per_page}"
-                #     f"&inqryDiv={inqry_div}"
-                #     f"&type=json"
-                #     f"&bidNtceNo={bid_ntce_no}"
-                #     f"&inqryBgnDt={current_start_str}"
-                #     f"&inqryEndDt={current_end_str}"
-                # )
-                
+
                 self.logger.debug(f"생성된 API URL: ...{api_url[-100:]}")
                 self.logger.debug(f"service_key: {service_key}")
 
@@ -701,10 +689,10 @@ class DocumentProcessor:
                                 service_key=service_key,
                                 timeout=10
                 )
-                
-                #print_dic_tree(data, list_count=11)
+
+                # print_dic_tree(data, list_count=11)
                 items = data.get('response', {}).get('body', {}).get('items', {})
-                #print_dic_tree(items)
+                # print_dic_tree(items)
                 # self.logger.info(f"0 -- {current_start_str} ~ {current_end_str}: {len(items)}건 조회")
                 if len(items) > 0:
                     merged_results.extend(items)
@@ -882,7 +870,7 @@ class DocumentProcessor:
             start_date: 검색 시작일 (YYYYMMDD)
             end_date: 검색 종료일 (YYYYMMDD)
         """
-        
+
         file_hash = None
         result = False
         # 1. 권한 요소(data_key) 검증
@@ -900,7 +888,7 @@ class DocumentProcessor:
             end_date=end_date,
             service_key=data_key
         )
-        
+
         self.logger.info(f"총 {len(bid_items)}개의 입찰 공고 항목 조회 완료.")
 
         if not bid_items:
