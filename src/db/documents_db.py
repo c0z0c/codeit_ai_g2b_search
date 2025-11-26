@@ -182,7 +182,7 @@ class DocumentsDB:
     def get_document_by_hash(self, file_hash: str) -> Optional[Dict[str, Any]]:
         """
         파일 해시값으로 문서 정보 조회
-        (변경점) 저장된 5개의 조각을 모두 찾아 내용을 하나로 합쳐서 반환합니다.
+        저장된 5개의 조각을 모두 찾아 내용을 하나로 합쳐서 반환합니다.
 
         Args:
             file_hash (str): 조회할 파일의 해시값
@@ -240,7 +240,6 @@ class DocumentsDB:
     def get_document_stats(self) -> Dict[str, Any]:
         """
         데이터베이스에 저장된 문서 통계 정보를 반환
-        (변경점) 중간에 구조 변경은 있지만, 최종 반환 값은 동일
 
         Returns:
             Dict[str, Any]: 문서 통계 정보
