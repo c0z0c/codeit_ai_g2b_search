@@ -18,6 +18,159 @@
     --transition: all 0.3s ease;
 }
 
+/* ==================== Streamlit 컨테이너 너비 확보 ==================== */
+/* 1. Streamlit 앱 전체 마진/패딩 제거 */
+.stApp {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* 2. 메인 콘텐츠 영역 너비 제한 해제 */
+.block-container {
+    max-width: 100% !important;
+    padding-left: 5% !important;
+    padding-right: 5% !important;
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+}
+
+/* ==================== 세션 목록 스크롤 컨테이너 ==================== */
+.session-list-wrapper {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 10px !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius) !important;
+    background-color: #fafafa !important;
+    margin-bottom: 1rem !important;
+}
+
+/* 스크롤바 스타일 (Webkit 브라우저) */
+.session-list-container::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+.session-list-container::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 4px !important;
+}
+
+.session-list-container::-webkit-scrollbar-thumb {
+    background: #888 !important;
+    border-radius: 4px !important;
+}
+
+.session-list-container::-webkit-scrollbar-thumb:hover {
+    background: #555 !important;
+}
+
+/* Firefox 스크롤바 */
+.session-list-container {
+    scrollbar-width: thin !important;
+    scrollbar-color: #888 #f1f1f1 !important;
+}
+
+/* 세션 목록 내부 간격 조정 */
+.session-list-container > div {
+    margin-bottom: 8px !important;
+}
+
+/* 다크모드 */
+@media (prefers-color-scheme: dark) {
+    .session-list-container {
+        background-color: #2a2a2a !important;
+        border-color: #444 !important;
+    }
+    
+    .session-list-container::-webkit-scrollbar-track {
+        background: #333 !important;
+    }
+    
+    .session-list-container::-webkit-scrollbar-thumb {
+        background: #666 !important;
+    }
+}
+
+/* ==================== 커스텀 채팅 메시지 스타일 ==================== */
+/* 채팅 메시지 컨테이너 */
+.chat-message {
+    display: flex !important;
+    align-items: flex-start !important;
+    margin-bottom: 15px !important;
+    width: 100% !important;
+    animation: slideIn 0.3s ease;
+    clear: both !important;
+}
+
+/* Assistant 메시지 (왼쪽 정렬) */
+.chat-message.assistant {
+    justify-content: flex-start !important;
+    flex-direction: row !important;
+}
+
+.chat-message.assistant .message-avatar {
+    order: 1 !important;
+    margin-right: 10px !important;
+    margin-left: 0 !important;
+}
+
+.chat-message.assistant .message-bubble {
+    order: 2 !important;
+}
+
+/* User 메시지 (오른쪽 정렬) */
+.chat-message.user {
+    justify-content: flex-end !important;
+    flex-direction: row !important;
+}
+
+.chat-message.user .message-avatar {
+    order: 2 !important;
+    margin-left: 10px !important;
+    margin-right: 0 !important;
+}
+
+.chat-message.user .message-bubble {
+    order: 1 !important;
+}
+
+/* 아바타 스타일 */
+.message-avatar {
+    font-size: 28px !important;
+    flex-shrink: 0 !important;
+    line-height: 1 !important;
+}
+
+/* 말풍선 스타일 (반응형 핵심) */
+.message-bubble {
+    max-width: 70% !important;
+    min-width: 80px !important;
+    width: fit-content !important;
+    padding: 12px 16px !important;
+    border-radius: 18px !important;
+    word-break: break-word !important;
+    line-height: 1.5 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    font-size: 0.95rem !important;
+}
+
+/* Assistant 말풍선 */
+.chat-message.assistant .message-bubble {
+    border-bottom-left-radius: 4px !important;
+}
+
+/* User 말풍선 */
+.chat-message.user .message-bubble {
+    border-bottom-right-radius: 4px !important;
+}
+
+/* 말풍선 내부 텍스트 여백 */
+.message-bubble p {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -234,12 +387,7 @@ textarea {
 }
 
 /* ==================== 채팅 메시지 ==================== */
-.message-container {
-    display: flex;
-    margin-bottom: 1rem;
-    animation: slideIn 0.3s ease;
-}
-
+/* 애니메이션 */
 @keyframes slideIn {
     from {
         opacity: 0;
@@ -249,6 +397,64 @@ textarea {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* B. 메시지 아이템 설정 (기본 스타일 및 정렬 제어) */
+/* 모든 메시지의 기본 스타일 */
+[data-testid="stChatMessage"] {
+    display: flex !important;
+    margin-bottom: 10px !important;
+    max-width: 75% !important;
+    width: fit-content !important;
+    animation: slideIn 0.3s ease;
+}
+
+/* 🟢 AI 메시지 (왼쪽 정렬) */
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]),
+[data-testid="stChatMessage"]:has(img[alt="assistant"]) {
+    align-self: flex-start !important;
+    margin-right: auto !important;
+    margin-left: 0 !important;
+}
+
+/* 🔵 사용자 메시지 (오른쪽 정렬) */
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]),
+[data-testid="stChatMessage"]:has(img[alt="user"]) {
+    align-self: flex-end !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+}
+
+/* C. 말풍선(버블) 스타일 추가 */
+/* 공통 말풍선 스타일 */
+[data-testid="stChatMessageContent"] {
+    padding: 10px 15px !important;
+    border-radius: 20px !important;
+    line-height: 1.4 !important;
+    word-break: break-word !important;
+    box-shadow: var(--shadow);
+}
+
+/* AI 말풍선 색상 (왼쪽) */
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) [data-testid="stChatMessageContent"],
+[data-testid="stChatMessage"]:has(img[alt="assistant"]) [data-testid="stChatMessageContent"] {
+    background-color: #F5F5F5 !important;
+    color: #333 !important;
+    border-bottom-left-radius: 5px !important;
+}
+
+/* 사용자 말풍선 색상 (오른쪽) */
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) [data-testid="stChatMessageContent"],
+[data-testid="stChatMessage"]:has(img[alt="user"]) [data-testid="stChatMessageContent"] {
+    background-color: #E3F2FD !important;
+    color: #1f77b4 !important;
+    border-bottom-right-radius: 5px !important;
+}
+
+/* 레거시 스타일 (호환성 유지) */
+.message-container {
+    display: flex;
+    margin-bottom: 1rem;
 }
 
 .message-user {
@@ -278,6 +484,75 @@ textarea {
     border: 1px solid var(--border-color);
     border-bottom-left-radius: 4px;
     color: var(--text-dark);
+}
+
+/* Streamlit 채팅 메시지 정렬 */
+/* 모든 채팅 메시지를 flex 컨테이너로 */
+[data-testid="stChatMessage"] {
+    display: flex !important;
+    width: 100% !important;
+    margin-bottom: 1rem !important;
+}
+
+/* user 메시지를 오른쪽에 배치 */
+[data-testid="stChatMessage"]:has(img[alt="user"]),
+[data-testid="stChatMessage"]:has([aria-label="user"]) {
+    justify-content: flex-end !important;
+    flex-direction: row !important;
+}
+
+[data-testid="stChatMessage"]:has(img[alt="user"]) > div,
+[data-testid="stChatMessage"]:has([aria-label="user"]) > div {
+    display: flex !important;
+    justify-content: flex-end !important;
+    max-width: 80% !important;
+}
+
+[data-testid="stChatMessage"]:has(img[alt="user"]) [data-testid="stChatMessageContent"],
+[data-testid="stChatMessage"]:has([aria-label="user"]) [data-testid="stChatMessageContent"] {
+    background-color: #E3F2FD !important;
+    border-radius: 12px 12px 4px 12px !important;
+    padding: 1rem 1.25rem !important;
+    box-shadow: 0 2px 8px rgba(31, 119, 180, 0.15) !important;
+    margin-left: auto !important;
+}
+
+/* assistant 메시지를 왼쪽에 배치 */
+[data-testid="stChatMessage"]:has(img[alt="assistant"]),
+[data-testid="stChatMessage"]:has([aria-label="assistant"]) {
+    justify-content: flex-start !important;
+    flex-direction: row !important;
+}
+
+[data-testid="stChatMessage"]:has(img[alt="assistant"]) > div,
+[data-testid="stChatMessage"]:has([aria-label="assistant"]) > div {
+    display: flex !important;
+    justify-content: flex-start !important;
+    max-width: 80% !important;
+}
+
+[data-testid="stChatMessage"]:has(img[alt="assistant"]) [data-testid="stChatMessageContent"],
+[data-testid="stChatMessage"]:has([aria-label="assistant"]) [data-testid="stChatMessageContent"] {
+    background-color: #F5F5F5 !important;
+    border-radius: 12px 12px 12px 4px !important;
+    padding: 1rem 1.25rem !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    margin-right: auto !important;
+}
+
+/* 다크모드 채팅 메시지 */
+@media (prefers-color-scheme: dark) {
+    [data-testid="stChatMessage"]:has(img[alt="user"]) [data-testid="stChatMessageContent"],
+    [data-testid="stChatMessage"]:has([aria-label="user"]) [data-testid="stChatMessageContent"] {
+        background-color: #1f4788;
+        color: #ffffff;
+    }
+    
+    [data-testid="stChatMessage"]:has(img[alt="assistant"]) [data-testid="stChatMessageContent"],
+    [data-testid="stChatMessage"]:has([aria-label="assistant"]) [data-testid="stChatMessageContent"] {
+        background-color: #2a2a2a;
+        color: #e0e0e0;
+    }
 }
 
 /* ==================== 테이블 ==================== */

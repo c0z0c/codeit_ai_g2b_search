@@ -108,6 +108,26 @@ class ChatHistoryDB:
             conn.commit()
             return cursor.lastrowid
 
+    def update_session_timestamp(self, session_id: str) -> bool:
+        """
+        세션의 updated_at 타임스탬프를 현재 시간으로 갱신
+        :param session_id: 갱신할 세션 ID
+        :return: 성공 여부
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE chat_sessions
+                    SET updated_at = ?
+                    WHERE session_id = ?
+                """, (datetime.now(), session_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"세션 타임스탬프 갱신 실패: {e}")
+            return False
+
     def list_sessions(self) -> List[Dict[str, Any]]:
         """
         모든 세션 목록을 반환 (session_id, session_name, created_at, updated_at, is_active)

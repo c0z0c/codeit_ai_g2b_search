@@ -204,6 +204,10 @@ if 'session_needs_rename' not in st.session_state:
 if 'temp_dir' not in st.session_state:
     st.session_state.temp_dir = tempfile.mkdtemp()
 
+# 파일 업로드 처리 완료 플래그
+if 'file_upload_processed' not in st.session_state:
+    st.session_state.file_upload_processed = False
+
 
 # ------------------------------------------------------------------------------------------------
 # 미션 프로벡트 AI  인스턴스 선언
@@ -274,24 +278,48 @@ with st.sidebar:
 
     with st.expander("날짜 범위 선택", expanded=False):
         col1, col2 = st.columns(2)
+        # with col1:
+        #     start_date = st.date_input(
+        #         "시작 날짜",
+        #         value=datetime.now() - timedelta(days=0),
+        #         max_value=datetime.now(),
+        #         key="update_start_date"
+        #     )
+        # with col2:
+        #     end_date = st.date_input(
+        #         "종료 날짜",
+        #         value=datetime.now(),
+        #         max_value=datetime.now(),
+        #         key="update_end_date"
+        #     )
         with col1:
-            start_date = st.date_input(
-                "시작 날짜",
-                value=datetime.now() - timedelta(days=0),
-                max_value=datetime.now(),
-                key="update_start_date"
+            start_datetime = st.text_input(
+                "시작 날짜/시간",
+                value=(datetime.now() - timedelta(days=7)).strftime("%Y%m%d0000"),
+                placeholder="202511191200",
+                key="update_start_date",
+                help="형식: YYYYMMDDHHMM (예: 202511261430)"
             )
         with col2:
-            end_date = st.date_input(
-                "종료 날짜",
-                value=datetime.now(),
-                max_value=datetime.now(),
-                key="update_end_date"
+            end_datetime = st.text_input(
+                "종료 날짜/시간",
+                value=datetime.now().strftime("%Y%m%d2359"),
+                placeholder="202511262359",
+                key="update_end_date",
+                help="형식: YYYYMMDDHHMM (예: 202511262359)"
             )
     
         # 날짜 유효성 검사
-        if start_date > end_date:
-            st.error("시작 날짜는 종료 날짜보다 이전이어야 합니다.")
+        try:
+            if len(start_datetime) == 12 and len(end_datetime) == 12:
+                start_dt = datetime.strptime(start_datetime, "%Y%m%d%H%M")
+                end_dt = datetime.strptime(end_datetime, "%Y%m%d%H%M")
+                if start_dt > end_dt:
+                    st.error("시작 날짜/시간은 종료 날짜/시간보다 이전이어야 합니다.")
+            else:
+                st.warning("날짜/시간 형식: YYYYMMDDHHMM (12자리)")
+        except ValueError:
+            st.error("올바른 날짜/시간 형식이 아닙니다. (예: 202511261430)")
 
         # data 키 값 입력
         data_key = st.text_input("데이터 포털 API Key",
@@ -300,29 +328,38 @@ with st.sidebar:
                              key="data_portal_api_key_input"
                              )
         config.DATA_GO_KR_SERVICE_KEY = data_key
+
     # 업데이트 버튼
     if st.button("데이터 포털 사이트 업데이트", use_container_width=True, key="btn_update_data_portal"):
-        if start_date > end_date:
-            st.error("날짜 범위가 유효하지 않습니다.")
+        # 입력 형식 검증
+        if len(start_datetime) != 12 or len(end_datetime) != 12:
+            st.error("날짜/시간 형식이 올바르지 않습니다. YYYYMMDDHHMM (12자리)를 입력하세요.")
         else:
-            # 날짜를 YYYYMMDD 형식 문자열로 변환
-            start_date_str = start_date.strftime("%Y%m%d1400")
-            end_date_str = end_date.strftime("%Y%m%d2359")
-            
-            
-            logger.info(f"데이터 포털 업데이트 시작: {start_date_str} ~ {end_date_str}")
-            logger.info(f"DATA_GO_KR_SERVICE_KEY: {config.DATA_GO_KR_SERVICE_KEY}")
-            
-            file_hash, result_bool = proc_doc.process_date(config.DATA_GO_KR_SERVICE_KEY, start_date_str, end_date_str)
-            proc_emb.sync_with_docs_db(config.OPENAI_API_KEY)
-            proc_emb.vector_manager.summary()
-            #print_dic_tree(result_bool)
-            logger.debug(f"Data Portal: {file_hash}")
-            
-            st.success(f"데이터 포털 사이트를 성공적으로 업데이트했습니다. ({start_date_str} ~ {end_date_str})")
-            # except Exception as e:
-            #     logger.error(f"데이터 포털 업데이트 실패: {str(e)}")
-            #     st.error(f"데이터 포털 업데이트에 실패했습니다: {str(e)}")
+            try:
+                # 날짜/시간 유효성 검증
+                start_dt = datetime.strptime(start_datetime, "%Y%m%d%H%M")
+                end_dt = datetime.strptime(end_datetime, "%Y%m%d%H%M")
+                
+                if start_dt > end_dt:
+                    st.error("시작 날짜/시간은 종료 날짜/시간보다 이전이어야 합니다.")
+                else:
+                    with st.spinner("데이터 포털에서 문서를 가져오는 중..."):
+                        logger.info(f"데이터 포털 업데이트 시작: {start_datetime} ~ {end_datetime}")
+                        logger.info(f"DATA_GO_KR_SERVICE_KEY: {config.DATA_GO_KR_SERVICE_KEY}")
+                        
+                        file_hash, result_bool = proc_doc.process_date(config.DATA_GO_KR_SERVICE_KEY, start_datetime, end_datetime)
+                    
+                    with st.spinner("임베딩 벡터를 생성하는 중..."):
+                        proc_emb.sync_with_docs_db(config.OPENAI_API_KEY)
+                        proc_emb.vector_manager.summary()
+                        logger.debug(f"Data Portal: {file_hash}")
+                    
+                    st.success(f"데이터 포털 사이트를 성공적으로 업데이트했습니다. ({start_datetime} ~ {end_datetime})")
+            except ValueError:
+                st.error("올바른 날짜/시간 형식이 아닙니다. (예: 202511261430)")
+            except Exception as e:
+                logger.error(f"데이터 포털 업데이트 실패: {str(e)}")
+                st.error(f"데이터 포털 업데이트에 실패했습니다: {str(e)}")
 
 
     # 데이터 통계
@@ -331,16 +368,16 @@ with st.sidebar:
     try:
         logger.debug("데이터 통계 로드 시도...")
         doc_stats = dbs['docs'].get_document_stats()
-        #embedding_stats = dbs['embeddings'].get_embedding_stats()
         col1, col2 = st.columns(2)
         vm_result = proc_emb.vector_manager.all_summary()
         
         with col1:
             st.metric("문서 수", f"{doc_stats.get('total_files', 0)}")
             st.metric("페이지 수", f"{doc_stats.get('total_pages', 0)}")
-        if vm_result:
-             st.metric("청큰 수", f"{vm_result.get('chunk_count', 0)}")
-             st.metric("파일 크기", f"{vm_result.get('total_size_mb', 0)} M bytes")
+        with col2:
+            if vm_result:
+                st.metric("청큰 수", f"{vm_result.get('chunk_count', 0)}")
+                st.metric("파일 크기", f"{vm_result.get('total_size_mb', 0):.1f} MB")
     except Exception as e:
         st.warning(f"데이터 통계 로드 실패: {str(e)}")
         st.info("더미 데이터를 생성하려면 '더미 데이터 생성' 버튼을 클릭하세요.")
@@ -353,31 +390,34 @@ with st.sidebar:
     # 파일 업로드 버튼 추가
     uploaded_file = st.file_uploader(
         "여기에 파일을 업로드하세요", # 사용자에게 보여줄 텍스트
-        type=['pdf', 'hwp'] # 허용할 파일 확장자 목록 (선택 사항) ['csv', 'txt', 'pdf', 'png'...]
+        type=['pdf', 'hwp'], # 허용할 파일 확장자 목록 (선택 사항) ['csv', 'txt', 'pdf', 'png'...]
+        key="file_uploader"
     )
 
     # 파일이 성공적으로 업로드되었는지 확인하고 처리
-    if uploaded_file is not None:
+    if uploaded_file is not None and not st.session_state.file_upload_processed:
         st.success(f"파일 '{uploaded_file.name}'이(가) 성공적으로 업로드되었습니다.")
     
-        temp_file_path = Path(st.session_state.temp_dir) / uploaded_file.name
-        with open(temp_file_path, 'wb') as f:
-            f.write(uploaded_file.getbuffer())
-            logger.debug(f"업로드된 파일이 임시 경로에 저장됨: {str(temp_file_path)}")
+        with st.spinner(f"파일 '{uploaded_file.name}' 처리 중..."):
+            temp_file_path = Path(st.session_state.temp_dir) / uploaded_file.name
+            with open(temp_file_path, 'wb') as f:
+                f.write(uploaded_file.getbuffer())
+                logger.debug(f"업로드된 파일이 임시 경로에 저장됨: {str(temp_file_path)}")
     
-        logger.debug(f"업로드된 파일 정보: 이름={uploaded_file.name}, 타입={uploaded_file.type}, 크기={uploaded_file.size} bytes")
+            logger.debug(f"업로드된 파일 정보: 이름={uploaded_file.name}, 타입={uploaded_file.type}, 크기={uploaded_file.size} bytes")
         
-        file_hash, result = proc_doc.process_doc(str(temp_file_path))
+            file_hash, result = proc_doc.process_doc(str(temp_file_path))
         
         summary = None
         if result is False:
             logger.error("파일 처리에 실패했습니다.")
             st.error("파일 처리에 실패했습니다.")
         else:
-            logger.info("파일이 성공적으로 처리되었습니다. 임베딩을 동기화합니다...")   
-            st.success("파일이 성공적으로 처리되었습니다. 임베딩을 동기화합니다...")
-            proc_emb.sync_with_docs_db(config.OPENAI_API_KEY)
-            summary = proc_emb.vector_manager.get_summary(file_hash)
+            with st.spinner("임베딩 벡터를 생성하는 중..."):
+                logger.info("파일이 성공적으로 처리되었습니다. 임베딩을 동기화합니다...")   
+                st.success("파일이 성공적으로 처리되었습니다. 임베딩을 동기화합니다...")
+                proc_emb.sync_with_docs_db(config.OPENAI_API_KEY)
+                summary = proc_emb.vector_manager.get_summary(file_hash)
         
         if temp_file_path.exists():
             temp_file_path.unlink()  # 업로드 후 임시 파일 삭제
@@ -389,20 +429,39 @@ with st.sidebar:
             "파일 타입": uploaded_file.type,
             "파일 크기 (바이트)": uploaded_file.size
         }
-            
+        
+        # session_state에 저장하여 재실행 후에도 유지
+        st.session_state.last_file_details = file_details
+        st.session_state.last_embedding_summary = summary
+    
+        # 처리 완료 플래그 설정 후 데이터 통계 갱신을 위한 재실행
+        st.session_state.file_upload_processed = True
+        st.rerun()
+    
+    elif uploaded_file is None:
+        # 파일이 제거되면 플래그 리셋
+        st.session_state.file_upload_processed = False
+        # 저장된 정보도 리셋
+        if 'last_file_details' in st.session_state:
+            del st.session_state.last_file_details
+        if 'last_embedding_summary' in st.session_state:
+            del st.session_state.last_embedding_summary
+        st.info("파일을 기다리고 있습니다...")
+    else:
+        # 이미 처리된 파일
+        st.info("파일이 처리되었습니다. 새 파일을 업로드하려면 기존 파일을 제거하세요.")
+    
+    # 처리 완료된 파일 정보 표시
+    if st.session_state.file_upload_processed and 'last_file_details' in st.session_state:
         st.write("---")
         st.subheader("업로드된 파일 상세 정보")
-        st.json(file_details)
+        st.json(st.session_state.last_file_details)
         
-        if summary is not None:
+        if 'last_embedding_summary' in st.session_state and st.session_state.last_embedding_summary is not None:
             st.write("---")
             st.subheader("임베딩 요약 정보")
-            st.json(summary)
-        
-    else:
-        st.info("파일을 기다리고 있습니다...")
-
-
+            st.json(st.session_state.last_embedding_summary)
+    
     # 채팅 세션 관리
     add_section_anchor("chat-session-section", "채팅 세션 관리") # 메인 영역 버튼 누르면 사이드바 이동
     
@@ -431,70 +490,177 @@ with st.sidebar:
         st.session_state.session_needs_rename = True
         st.rerun()
     
-    # 세션 목록 불러오기 (최신 5개만)
-    session_list = dbs['chat'].list_sessions()[:5]
-    session_names = [s['session_name'] for s in session_list]
-    session_ids = [s['session_id'] for s in session_list]
-
-    # 세션 선택 (사이드바)
-    if session_list:
-        selected_idx = 0
-
-        # 현재 선택된 세션이 있으면 해당 인덱스
-        if st.session_state.session_id in session_ids:
-            selected_idx = session_ids.index(st.session_state.session_id)
-
-        selected_session_name = st.radio(
-            "저장된 채팅 세션 목록 (최신 5개)",
-            options=session_names,
-            index=selected_idx,
-            key="sidebar_session_radio",
+    # 세션 목록 불러오기
+    all_sessions = dbs['chat'].list_sessions()
+    recent_sessions = all_sessions[:5]  # 최신 5개
+    
+    # 전체 세션 selectbox
+    if all_sessions:
+        st.markdown("**전체 채팅 세션**")
+        
+        # selectbox 옵션 생성 (세션 이름 + ID)
+        session_options = {s['session_name']: s['session_id'] for s in all_sessions}
+        session_display_names = list(session_options.keys())
+        
+        # 현재 세션의 인덱스 찾기
+        current_session_name = st.session_state.get('selected_session', '')
+        try:
+            current_index = session_display_names.index(current_session_name)
+        except ValueError:
+            current_index = 0
+        
+        selected_session_name = st.selectbox(
+            "세션 선택",
+            options=session_display_names,
+            index=current_index,
+            key="session_selectbox"
         )
-
-        # 선택 시 해당 세션의 메시지 불러오기
-        if selected_session_name != st.session_state.selected_session:
-            sel_idx = session_names.index(selected_session_name)
-            sel_id = session_ids[sel_idx]
-            st.session_state.session_id = sel_id
+        
+        # 선택한 세션 정보 가져오기
+        selected_session_id = session_options[selected_session_name]
+        is_current_session = (selected_session_id == st.session_state.session_id)
+        
+        # selectbox에서 선택한 세션이 현재 세션과 다르면 자동 전환
+        if not is_current_session:
+            st.session_state.session_id = selected_session_id
             st.session_state.selected_session = selected_session_name
-
-            # DB에서 메시지 불러와서 role, content만 추출
-            db_messages = dbs['chat'].get_session_messages(sel_id)
+            
+            # DB에서 메시지 불러오기
+            db_messages = dbs['chat'].get_session_messages(selected_session_id)
             st.session_state.messages = [{"role": msg["role"], "content": msg["content"]} for msg in db_messages]
             st.session_state.session_needs_rename = False
+            
+            # updated_at 갱신하여 최근 세션 목록으로 이동 (같은 이름으로 업데이트)
+            dbs['chat'].update_session_name(selected_session_id, selected_session_name)
+            
             st.rerun()
         
+        # 삭제 버튼 및 확인
+        if st.button("삭제", key="selectbox_delete_session", type="secondary", use_container_width=True):
+            # 삭제 확인 상태 저장
+            st.session_state.confirm_delete_selectbox = selected_session_id
+        
+        # 삭제 확인 대화상자
+        if st.session_state.get('confirm_delete_selectbox') == selected_session_id:
+            st.warning(f"정말로 '{selected_session_name}' 세션을 삭제하시겠습니까?")
+            col_yes, col_no = st.columns(2)
+            with col_yes:
+                if st.button("예", key="confirm_yes_selectbox", type="primary", use_container_width=True):
+                    if dbs['chat'].delete_session(selected_session_id):
+                        # 남은 세션 확인
+                        remaining_sessions = dbs['chat'].list_sessions()
+                        
+                        if remaining_sessions:
+                            # 남은 세션 중 첫 번째 세션 선택
+                            first_session = remaining_sessions[0]
+                            st.session_state.session_id = first_session['session_id']
+                            st.session_state.selected_session = first_session['session_name']
+                            db_messages = dbs['chat'].get_session_messages(first_session['session_id'])
+                            st.session_state.messages = [{"role": msg["role"], "content": msg["content"]} for msg in db_messages]
+                            st.session_state.session_needs_rename = False
+                        else:
+                            # 세션이 하나도 없으면 새 세션 생성
+                            session_name = f"새 채팅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                            new_session_id = dbs['chat'].create_session(session_name)
+                            welcome_msg = "안녕하세요! 저는 AI 채팅 어시스턴트입니다. 무엇을 도와드릴까요?"
+                            dbs['chat'].add_message(new_session_id, "assistant", welcome_msg)
+                            st.session_state.session_id = new_session_id
+                            st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
+                            st.session_state.selected_session = session_name
+                            st.session_state.session_needs_rename = True
+                        
+                        st.session_state.confirm_delete_selectbox = None
+                        st.rerun()
+            with col_no:
+                if st.button("아니오", key="confirm_no_selectbox", use_container_width=True):
+                    st.session_state.confirm_delete_selectbox = None
+                    st.rerun()
+    
+    st.markdown("---")
+    
+    # 최근 5개 세션 Expander 표시
+    if recent_sessions:
+        st.markdown("**최근 채팅 세션 (5개)**")
+        
+        for idx, session in enumerate(recent_sessions):
+            session_id = session['session_id']
+            session_name = session['session_name']
+            created_at = session.get('created_at', 'N/A')
+            updated_at = session.get('updated_at', 'N/A')
+            
+            # 메시지 수 계산
+            session_messages = dbs['chat'].get_session_messages(session_id)
+            message_count = len(session_messages)
+            
+            # 현재 선택된 세션인지 확인
+            is_current = (session_id == st.session_state.session_id)
+            
+            # Expander 제목 (현재 세션은 표시)
+            expander_label = f"{'📌 ' if is_current else ''}{session_name[:30]}{'...' if len(session_name) > 30 else ''}"
+            
+            with st.expander(expander_label, expanded=False):
+                st.markdown(f"**세션 이름**: {session_name}")
+                st.markdown(f"**생성 시간**: {created_at}")
+                st.markdown(f"**마지막 활동**: {updated_at}")
+                st.markdown(f"**메시지 수**: {message_count}개")
+                
+                col1, col2 = st.columns([3, 1])
+                
+                with col1:
+                    # 세션 선택 버튼
+                    if not is_current:
+                        if st.button("선택", key=f"select_session_{session_id}", use_container_width=True):
+                            st.session_state.session_id = session_id
+                            st.session_state.selected_session = session_name
+                            
+                            # DB에서 메시지 불러오기
+                            db_messages = dbs['chat'].get_session_messages(session_id)
+                            st.session_state.messages = [{"role": msg["role"], "content": msg["content"]} for msg in db_messages]
+                            st.session_state.session_needs_rename = False
+                            st.rerun()
+                
+                with col2:
+                    # 삭제 버튼
+                    if st.button("삭제", key=f"delete_session_{session_id}", type="secondary", use_container_width=True):
+                        st.session_state[f'confirm_delete_{session_id}'] = True
+                
+                # 삭제 확인 대화상자
+                if st.session_state.get(f'confirm_delete_{session_id}', False):
+                    st.warning(f"정말로 '{session_name}' 세션을 삭제하시겠습니까?")
+                    col_yes, col_no = st.columns(2)
+                    with col_yes:
+                        if st.button("예", key=f"confirm_yes_{session_id}", type="primary", use_container_width=True):
+                            if dbs['chat'].delete_session(session_id):
+                                # 남은 세션 확인
+                                remaining_sessions = dbs['chat'].list_sessions()
+                                
+                                if remaining_sessions:
+                                    # 남은 세션 중 첫 번째 세션 선택
+                                    first_session = remaining_sessions[0]
+                                    st.session_state.session_id = first_session['session_id']
+                                    st.session_state.selected_session = first_session['session_name']
+                                    db_messages = dbs['chat'].get_session_messages(first_session['session_id'])
+                                    st.session_state.messages = [{"role": msg["role"], "content": msg["content"]} for msg in db_messages]
+                                    st.session_state.session_needs_rename = False
+                                else:
+                                    # 세션이 하나도 없으면 새 세션 생성
+                                    session_name = f"새 채팅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                                    new_session_id = dbs['chat'].create_session(session_name)
+                                    welcome_msg = "안녕하세요! 저는 AI 채팅 어시스턴트입니다. 무엇을 도와드릴까요?"
+                                    dbs['chat'].add_message(new_session_id, "assistant", welcome_msg)
+                                    st.session_state.session_id = new_session_id
+                                    st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
+                                    st.session_state.selected_session = session_name
+                                    st.session_state.session_needs_rename = True
+                                
+                                st.session_state[f'confirm_delete_{session_id}'] = False
+                                st.rerun()
+                    with col_no:
+                        if st.button("아니오", key=f"confirm_no_{session_id}", use_container_width=True):
+                            st.session_state[f'confirm_delete_{session_id}'] = False
+                            st.rerun()
+        
         st.markdown("---")
-
-        # 선택된 세션 삭제 버튼
-        if st.button("선택된 세션 삭제", use_container_width=True, type="secondary", key="delete_current_session"):
-            current_idx = session_names.index(st.session_state.selected_session)
-            current_sess_id = session_ids[current_idx]
-
-            if dbs['chat'].delete_session(current_sess_id):
-                # 남은 세션 확인
-                remaining_sessions = dbs['chat'].list_sessions()
-
-                if remaining_sessions:
-                    # 남은 세션 중 첫 번째 세션 선택
-                    first_session = remaining_sessions[0]
-                    st.session_state.session_id = first_session['session_id']
-                    st.session_state.selected_session = first_session['session_name']
-                    db_messages = dbs['chat'].get_session_messages(first_session['session_id'])
-                    st.session_state.messages = [{"role": msg["role"], "content": msg["content"]} for msg in db_messages]
-                    st.session_state.session_needs_rename = False
-                else:
-                    # 세션이 하나도 없으면 새 세션 생성
-                    session_name = f"새 채팅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                    new_session_id = dbs['chat'].create_session(session_name)
-                    welcome_msg = "안녕하세요! 저는 AI 채팅 어시스턴트입니다. 무엇을 도와드릴까요?"
-                    dbs['chat'].add_message(new_session_id, "assistant", welcome_msg)
-                    st.session_state.session_id = new_session_id
-                    st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
-                    st.session_state.selected_session = session_name
-                    st.session_state.session_needs_rename = True
-
-                st.rerun()
 
     else:
         st.info("저장된 채팅 세션이 없습니다.")
@@ -519,6 +685,33 @@ if selected_tab == "AI 채팅":
 elif selected_tab == "문서 검색":
     scroll_sidebar_for_tab("문서 검색")
 
+# 채팅 메시지 렌더링 함수
+def render_chat_message(role, content):
+    """HTML/CSS로 채팅 메시지 렌더링"""
+    if role == "user":
+        avatar = "🧑"
+        align_class = "user"
+        bg_color = "#E3F2FD"
+        text_color = "#1f77b4"
+    else:
+        avatar = "🤖"
+        align_class = "assistant"
+        bg_color = "#F5F5F5"
+        text_color = "#333"
+    
+    # HTML 이스케이프 처리 및 줄바꿈 변환
+    content_html = content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+    
+    message_html = f"""
+    <div class="chat-message {align_class}">
+        <div class="message-avatar">{avatar}</div>
+        <div class="message-bubble" style="background-color: {bg_color}; color: {text_color};">
+            {content_html}
+        </div>
+    </div>
+    """
+    st.markdown(message_html, unsafe_allow_html=True)
+
 # ===== 1번 탭: AI 채팅 =====
 if selected_tab == "AI 채팅":
     st.subheader(f"현재 세션: {st.session_state.selected_session}")
@@ -536,8 +729,7 @@ if selected_tab == "AI 채팅":
 
     # 채팅 메시지 표시 컨테이너
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        render_chat_message(message["role"], message["content"])
 
     # --------------------------------------------------------------------------------------------
     # 사용자 입력 텍스트 박스 & 전송 버튼 구현
@@ -548,8 +740,7 @@ if selected_tab == "AI 채팅":
         logger.debug(f"사용자 입력: {prompt}")
 
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+        render_chat_message("user", prompt)
         
         db_messages = dbs['chat'].get_session_messages(st.session_state.session_id)
 
@@ -576,18 +767,50 @@ if selected_tab == "AI 채팅":
                 'file_hash': file_hash,
             }            
         
-        with st.spinner("답변을 준비중입니다..."):
-            embedding_result = llm_retrieval.search_page(query, sort_by='page', filter_metadata=metadata)
-            print_dic_tree(embedding_result)
-            llm_processor = LLMProcessor(session_id=st.session_state.session_id, config=config)
-            llm_res = llm_processor.generate_response(query, retrieved_chunks=embedding_result)
-            logger.debug(f"result: {llm_res[:100]}") 
+        # 벡터 검색
+        embedding_result = llm_retrieval.search_page(query, sort_by='page', filter_metadata=metadata)
+        print_dic_tree(embedding_result)
         
-        st.session_state.messages.append({"role": "assistant", "content": llm_res})
-        with st.chat_message("assistant"):
-            st.markdown(llm_res)
+        # LLM 프로세서 초기화
+        llm_processor = LLMProcessor(session_id=st.session_state.session_id, config=config)
         
-        # 첫 사용자 메시지로 세션 이름 변경
+        # 스트리밍 응답을 받을 빈 컨테이너 생성
+        message_placeholder = st.empty()
+        
+        # 초기 로딩 메시지 표시
+        loading_html = """
+        <div class="chat-message assistant">
+            <div class="message-avatar">🤖</div>
+            <div class="message-bubble" style="background-color: #F5F5F5; color: #999;">
+                답변을 준비중입니다...
+            </div>
+        </div>
+        """
+        message_placeholder.markdown(loading_html, unsafe_allow_html=True)
+        
+        full_response = ""
+        
+        # 스트리밍 응답 처리 (첫 청크부터 즉시 표시)
+        for response_chunk in llm_processor.generate_response_stream(query, retrieved_chunks=embedding_result):
+            full_response = response_chunk
+            # HTML로 실시간 렌더링
+            content_html = full_response.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+            streaming_html = f"""
+            <div class="chat-message assistant">
+                <div class="message-avatar">🤖</div>
+                <div class="message-bubble" style="background-color: #F5F5F5; color: #333;">
+                    {content_html}
+                </div>
+            </div>
+            """
+            message_placeholder.markdown(streaming_html, unsafe_allow_html=True)
+        
+        logger.debug(f"result: {full_response[:100]}")
+        
+        # 스트리밍 완료 후 messages에 추가
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
+        
+        # 첫 사용자 메시지로 세션 이름 변경 (rerun 전에 처리)
         if st.session_state.session_needs_rename:
             # 세션 이름을 사용자 메시지로 설정 (최대 50자)
             new_session_name = prompt[:50] + ("..." if len(prompt) > 50 else "")

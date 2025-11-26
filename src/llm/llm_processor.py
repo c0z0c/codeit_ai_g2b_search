@@ -307,6 +307,90 @@ class LLMProcessor:
         return answer
 
     # -----------------------------------------------------------------------
+    # ⭐ 스트리밍 응답 생성 (실시간 한 글자씩 출력)
+    # -----------------------------------------------------------------------
+    def generate_response_stream(self, query: str, retrieved_chunks: Any):
+        """
+        OpenAI API 스트리밍 모드로 응답을 생성하는 제너레이터.
+        
+        Args:
+            query: 사용자 질문
+            retrieved_chunks: 검색된 컨텍스트
+            
+        Yields:
+            str: 누적된 응답 텍스트 (실시간 업데이트)
+        """
+        # 1) 튜플 키 → 문자열 변환
+        processed = self._convert_tuple_keys_to_str(retrieved_chunks)
+
+        # 2) 파일 해시 패치 적용
+        processed = self._add_file_hash(processed)
+
+        # 3) DB에 user 메시지 저장
+        if self.use_db:
+            self.db.add_message(
+                session_id=self.session_id,
+                role="user",
+                content=query,
+                retrieved_chunks=processed,
+            )
+
+        # 4) 컨텍스트 구성
+        max_chunks = 5
+        if isinstance(processed, dict) and "pages" in processed:
+            context = self._build_context_from_pages(processed["pages"], max_chunks)
+        elif isinstance(processed, list):
+            context = self._build_context_from_chunks(processed, max_chunks)
+        else:
+            context = self.config.NO_CONTEXT_MESSAGE
+
+        # 5) 프롬프트 구성
+        full_input = f"""다음 컨텍스트를 참고하여 질문에 답변해주세요.
+답변은 컨텍스트 내용에 기반해야 하며, 출처 정보(파일명, 페이지, 유사도)를 답변 다음 줄에 포함해주세요.
+답변만 작성하고 '질의:', '답변:' 등의 라벨은 붙이지 마세요.
+
+컨텍스트:
+{context}
+
+질문: {query}
+
+답변:"""
+
+        # 6) 스트리밍 LLM 호출
+        full_response = ""
+        try:
+            # OpenAI API 직접 호출 (스트리밍)
+            from openai import OpenAI
+            client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+            
+            stream = client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": full_input}],
+                temperature=self.temperature,
+                stream=True
+            )
+            
+            for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    content = chunk.choices[0].delta.content
+                    full_response += content
+                    yield full_response  # 누적된 텍스트 반환
+                    
+        except Exception as e:
+            self.logger.error(f"스트리밍 응답 오류: {e}")
+            full_response = f"오류 발생: {e}"
+            yield full_response
+
+        # 7) 완료된 응답을 DB에 저장
+        if self.use_db:
+            self.db.add_message(
+                session_id=self.session_id,
+                role="assistant",
+                content=full_response,
+                retrieved_chunks=None,
+            )
+
+    # -----------------------------------------------------------------------
     def get_memory_summary(self) -> str:
         try:
             data = self.memory.load_memory_variables({})
