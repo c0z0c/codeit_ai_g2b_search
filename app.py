@@ -664,6 +664,33 @@ with st.sidebar:
 
     else:
         st.info("저장된 채팅 세션이 없습니다.")
+    
+    # 세션 통계
+    st.subheader("채팅 통계")
+    
+    chat_stats = dbs['chat'].get_chat_stats()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("총 대화 수", f"{chat_stats.get('total_sessions', 0)}")
+        st.metric("활성 세션", f"{chat_stats.get('active_sessions', 0)}")
+    with col2:
+        st.metric("총 메시지", f"{chat_stats.get('total_messages', 0)}")
+        
+        # 평균 대화 길이 계산
+        total_sessions = chat_stats.get('total_sessions', 0)
+        total_messages = chat_stats.get('total_messages', 0)
+        avg_length = total_messages / total_sessions if total_sessions > 0 else 0
+        st.metric("평균 대화 길이", f"{avg_length:.1f}개")
+    
+    # 추가 통계
+    st.markdown("**메시지 구성**")
+    user_msg = chat_stats.get('user_messages', 0)
+    assistant_msg = chat_stats.get('assistant_messages', 0)
+    st.text(f"사용자: {user_msg} | AI: {assistant_msg}")
+        
+    #except Exception as e:
+    #st.warning(f"통계 로드 실패: {str(e)}")
 
 # ----- 2. 메인 영역 구현 -----
 
@@ -835,15 +862,6 @@ if selected_tab == "AI 채팅":
 elif selected_tab == "문서 검색":
     st.subheader("문서 검색")
     top_k = st.number_input("결과 수", min_value=1, max_value=20, value=5, key="top_k_input")
-    
-    # 검색어 입력과 버튼
-    # with st.expander("날짜 범위 선택", expanded=False):
-    #     col1, col2 = st.columns(2)
-    #     with col1:
-    #         search_query = st.text_input("검색어", key="doc_search_input", label_visibility="collapsed", placeholder="검색어를 입력하세요")
-
-    #     with col2:
-    #         search_button = st.button("검색", key="btn_search", use_container_width=True)
             
     search_col1, search_col2 = st.columns([5, 1])
     with search_col1:
@@ -859,21 +877,97 @@ elif selected_tab == "문서 검색":
             
             st.success(f"검색 완료! {len(embedding_result)}개 결과")
             
+            # 차트 시각화
+            if embedding_result and len(embedding_result) > 0:
+                st.subheader("📊 검색 결과 시각화")
+                
+                # 데이터 준비
+                chart_data = []
+                for idx, result in enumerate(embedding_result, 1):
+                    file_name = result.get('file_name', '파일명 없음')
+                    distance = result.get('distance', 0)
+                    similarity_pct = max(0, (1.5 - distance) / 1.5 * 100)
+                    
+                    # 파일명 축약 (너무 길면)
+                    display_name = file_name[:30] + '...' if len(file_name) > 30 else file_name
+                    
+                    chart_data.append({
+                        '순위': f"{idx}. {display_name}",
+                        '유사도': similarity_pct,
+                        '거리': distance
+                    })
+                
+                import pandas as pd
+                df = pd.DataFrame(chart_data)
+                
+                # 문서 분포 계산
+                doc_distribution = {}
+                for result in embedding_result:
+                    file_name = result.get('file_name', '파일명 없음')
+                    doc_distribution[file_name] = doc_distribution.get(file_name, 0) + 1
+                
+                # 탭으로 차트 종류 선택
+                chart_tab1, chart_tab2, chart_tab3 = st.tabs(["📊 유사도 막대", "📈 유사도 추이", "📑 문서 분포"])
+                
+                with chart_tab1:
+                    st.bar_chart(df.set_index('순위')['유사도'])
+                
+                with chart_tab2:
+                    st.line_chart(df.set_index('순위')['유사도'])
+                
+                with chart_tab3:
+                    # 문서별 청크 수 파이 차트
+                    doc_df = pd.DataFrame(list(doc_distribution.items()), columns=['문서명', '청크 수'])
+                    
+                    # 문서명 축약
+                    doc_df['문서명 (축약)'] = doc_df['문서명'].apply(
+                        lambda x: x[:25] + '...' if len(x) > 25 else x
+                    )
+                    
+                    st.bar_chart(doc_df.set_index('문서명 (축약)')['청크 수'])
+                    st.caption(f"총 {len(doc_distribution)}개 문서에서 {len(embedding_result)}개 청크 검색됨")
+            
             st.subheader("검색 결과")
             # 검색 결과 표시
             for idx, result in enumerate(embedding_result, 1):
                 file_name = result.get('file_name', '파일명 없음')
                 distance = result.get('distance', 0)
-                similarity_pct = max(0, (2.0 - distance) / 2.0 * 100)  # 거리 기반 유사도 변환
+                similarity_pct = max(0, (1.5 - distance) / 1.5 * 100)  # 거리 기반 유사도 변환
                 start_page = result.get('start_page', '?')
                 end_page = result.get('end_page', '?')
                 text_snippet = result.get('text', '')[:200]  # 텍스트 미리보기 200자
                 
-                with st.expander(f"[{idx}] {file_name} (페이지 {start_page}-{end_page})"):
-                    st.metric("유사도", f"{similarity_pct:.1f}%")
+                # 유사도에 따른 색상 결정
+                if similarity_pct >= 70:
+                    color = "🟢"  # 높은 유사도 - 초록색
+                    quality = "높음"
+                elif similarity_pct >= 40:
+                    color = "🟡"  # 중간 유사도 - 노란색
+                    quality = "중간"
+                else:
+                    color = "🔴"  # 낮은 유사도 - 빨간색
+                    quality = "낮음"
+                
+                with st.expander(f"{color} [{idx}] {file_name} (페이지 {start_page}-{end_page}) - 관련도: {quality}"):
+                    # 유사도 바 시각화
+                    bar_length = int(similarity_pct / 2)  # 0-50 범위로 변환
+                    bar_color = "🟩" if similarity_pct >= 70 else "🟨" if similarity_pct >= 40 else "🟥"
+                    similarity_bar = bar_color * bar_length + "⬜" * (50 - bar_length)
+                    
+                    st.markdown(f"**유사도**: {similarity_pct:.1f}%")
+                    st.markdown(f"{similarity_bar}")
                     st.markdown(f"**거리 값**: {distance:.4f}")
                     st.markdown(f"**내용 미리보기**:")
-                    st.text(text_snippet)
+                    
+                    # 검색어 하이라이트 (간단한 구현)
+                    highlighted_text = text_snippet
+                    if search_query and len(search_query) > 2:
+                        # 검색어를 볼드체로 강조
+                        import re
+                        pattern = re.compile(re.escape(search_query), re.IGNORECASE)
+                        highlighted_text = pattern.sub(f"**{search_query}**", text_snippet)
+                    
+                    st.markdown(highlighted_text)
         else:
             st.warning("검색어를 입력해주세요.")
 
