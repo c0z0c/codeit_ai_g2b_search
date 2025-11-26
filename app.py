@@ -697,6 +697,8 @@ with st.sidebar:
 # 메인 영역 제목
 st.title("문서 검색 시스템")
 
+llm_retrieval.vector_manager.summary()
+
 # 탭 생성 및 선택 추적
 selected_tab = st.radio(
     "메뉴 선택",

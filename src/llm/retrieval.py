@@ -18,6 +18,7 @@ except ImportError:
 from src.vectorstore.vector_store_manager import VectorStoreManager 
 from src.config import get_config
 from src.utils.logging_config import get_logger
+from src.utils.helper_utils import *
 
 class Retrieval:
     """
@@ -125,17 +126,23 @@ class Retrieval:
         if api_key:
             import os
             os.environ['OPENAI_API_KEY'] = api_key
-
-        try:
-            search_results = self.vector_manager.search(
-                query=query,
-                top_k=top_k,
-                filter_metadata=filter_metadata
-            )
-            self.logger.debug(f"FAISS 검색 완료: {len(search_results)}개 결과")
-        except Exception as e:
-            self.logger.error(f"검색 실패: {e}")
-            return []
+        
+        if filter_metadata:
+            self.logger.debug("필터 적용 전 샘플 메타데이터 확인")
+            sample_results = self.vector_manager.search(query=query, top_k=3, filter_metadata=None)
+            if sample_results:
+                sample_meta = sample_results[0][0].metadata
+                self.logger.debug(f"샘플 메타데이터 키: {list(sample_meta.keys())}")
+                self.logger.debug(f"샘플 file_hash: {sample_meta.get('file_hash')}")
+                self.logger.debug(f"요청된 file_hash: {filter_metadata.get('file_hash')}")
+                print_dic_tree(sample_results)
+            
+        search_results = self.vector_manager.search(
+            query=query,
+            top_k=top_k,
+            filter_metadata=filter_metadata
+        )
+        self.logger.debug(f"FAISS 검색 완료: {len(search_results)}개 결과")
 
         results = []
         for doc, distance in search_results:
