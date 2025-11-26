@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# app.py ui 추가작업 테스트
+# app.py 원본저장용
 """
 문서 검색 시스템 (PDF, HWP, DOCX 등)
 Streamlit UI 초안 구현 및 테스트

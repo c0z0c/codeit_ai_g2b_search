@@ -56,9 +56,9 @@ class LLMProcessor:
         self.model_name = model or self.config.OPENAI_MODEL
         self.temperature = temperature if temperature is not None else self.config.OPENAI_TEMPERATURE
 
-        # gpt-5-mini 에서 temperature=0 금지
-        if self.model_name == "gpt-5-mini" and self.temperature == 0.0:
-            self.logger.warning("gpt-5-mini는 temperature=0을 지원하지 않음 → 1.0으로 자동 변경")
+        # gpt-5, gpt-5-mini, gpt-5-nano 모두 temperature=0 미지원 (기본값 1.0만 지원)
+        if self.model_name in ["gpt-5", "gpt-5-mini", "gpt-5-nano"] and self.temperature == 0.0:
+            self.logger.warning(f"{self.model_name}는 temperature=0을 지원하지 않음 → 1.0으로 자동 변경")
             self.temperature = 1.0
 
         # # API KEY 등록
