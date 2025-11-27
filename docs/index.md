@@ -14,6 +14,9 @@ author: "김명환"
 ## 📱 프로젝트 개요
 **목표**: RAG(Retrieval-Augmented Generation) 시스템을 구축하여 복잡한 형태의 기업 및 정부 제안요청서(Request For Proposal, RFP) 내용을 효과적으로 추출하고 요약하여 필요한 정보를 제공하는 서비스를 개발하는 것을 목표로 합니다.
 
+## 결과 보고서
+[결과 보고서 다운로드](https://c0z0c.github.io/codeit_ai_g2b_search/보고서/3팀_중급프로젝트_결과보고서_최종.pdf)
+
 ## 👥 팀원
 
 | 역할          | 담당자       | 핵심 업무                                      |
@@ -153,6 +156,8 @@ function getFileInfo(extname) {
   <!-- 폴더 목록이 JavaScript로 동적 생성됩니다 -->
 </div>
 
+
+---
 
 ## 전체 아키텍처
 
