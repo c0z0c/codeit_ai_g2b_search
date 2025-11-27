@@ -48,7 +48,6 @@ pypdf==6.2.0
 # Rust 설치 필요: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 # Java 설치 필요: sudo apt-get install default-jdk
 helper-hwp==0.5.1
-libhwp==0.2.0
 pyhwp==0.1b15
 hwp-extract==0.1.0
 jpype1==1.6.0
@@ -87,6 +86,7 @@ cycler==0.12.1
 fonttools==4.60.1
 kiwisolver==1.4.9
 pyparsing==3.2.5
+plotly==5.17.0
 
 # Image processing
 pillow==11.3.0

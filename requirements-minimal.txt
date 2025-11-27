@@ -30,6 +30,9 @@ pymupdf4llm==0.2.0
 numpy==1.26.4
 pandas==2.3.3
 
+# 데이터 시각화
+plotly==5.17.0
+
 # 기타 필수
 tqdm==4.67.1
 requests==2.32.5
