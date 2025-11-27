@@ -3,6 +3,7 @@
 > **[중급 프로젝트]** OpenAI LLM + LangChain 기반 문서 검색 및 질의응답 시스템
 >
 > 📅 **프로젝트 기간**: 2025.11.08 ~ 2025.11.28 (3주) ✅ **완료**
+> **[결과 보고서 다운로드](https://drive.google.com/file/d/1EjaqbRXXX6tl1I4omXlMSTklGSylVe_U/view?usp=drive_link)**
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-API-green.svg)](https://openai.com/)
