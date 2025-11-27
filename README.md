@@ -1,7 +1,6 @@
 # RAG 기반 공공데이터 문서 처리 시스템
 
 ---
-> **[결과 보고서 다운로드](https://drive.google.com/file/d/1EjaqbRXXX6tl1I4omXlMSTklGSylVe_U/view?usp=drive_link)**
 
 > **[중급 프로젝트]** OpenAI LLM + LangChain 기반 문서 검색 및 질의응답 시스템<br/>
 ><br/>
