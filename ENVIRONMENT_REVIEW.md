@@ -13,7 +13,7 @@ environment.yml 파일을 Ubuntu 22.04 서버 환경에 맞게 검토하고 개�
 ```yaml
 # Rust 필요 (pip 섹션)
 - cryptography==46.0.3      # 보안/암호화
-- libhwp==0.2.0            # HWP 파일 처리
+- helper-hwp==0.5.4            # HWP 파일 처리
 - pydantic-core==2.41.4    # 데이터 검증 (Pydantic 의존성)
 ```
 
