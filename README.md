@@ -8,6 +8,11 @@
 ><br/>
 > ✅ **완료** **[결과 보고서 다운로드](https://c0z0c.github.io/codeit_ai_g2b_search/보고서/3팀_중급프로젝트_결과보고서_최종.pdf)**
 
+<video width="320" height="240" controls>
+  <source src="docs/발표자료/코드잇AI4기3팀중급과제_데모.mp4" type="video/mp4">
+</video>
+
+
 ---
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
