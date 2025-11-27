@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 기존 TestApp.py의 코드 -> App.py로 이동 (특정부분 에러발생확률 높음)
+# app.py ui 추가작업 테스트
 """
 문서 검색 시스템 (PDF, HWP, DOCX 등)
 Streamlit UI 초안 구현 및 테스트
@@ -15,6 +15,7 @@ st.set_page_config(
 
 
 import os
+import re
 from openai import OpenAI
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -23,6 +24,9 @@ from dotenv import load_dotenv
 import importlib
 import tempfile
 import shutil
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 
 import logging
 from src.utils.logging_config import setup_logger
@@ -33,41 +37,26 @@ from src.utils.helper_c0z0c_dev import *
 from src import config
 from src.config import get_config, Config
 
+
 from src.processors import document_processor
-importlib.reload(document_processor)
-from src.processors import document_processor
-
 from src.processors import embedding_processor
-importlib.reload(embedding_processor)
-from src.processors import embedding_processor
-
 from src.llm import llm_processor
-importlib.reload(llm_processor)
-from src.llm import llm_processor
-
 from src.llm import rag_evaluator
-importlib.reload(rag_evaluator)
-from src.llm import rag_evaluator
-
-from src.db  import chat_history_db
-importlib.reload(chat_history_db)
 from src.db import chat_history_db
-
 from src.db import documents_db
-importlib.reload(documents_db)
-from src.db import documents_db
-
 from src.db import DocumentsDB, ChatHistoryDB
 from src.vectorstore import VectorStoreManager
 
 from src.processors.document_processor import DocumentProcessor
 from src.processors.embedding_processor import EmbeddingProcessor
 
+
 from src.llm import retrieval
 from src.llm.retrieval import Retrieval
 from src.llm import llm_processor
 from src.llm.llm_processor import LLMProcessor
 from src.llm.rag_evaluator import RAGEvaluator
+
 
 from src.ui.sidebar_scroll import scroll_sidebar_for_tab, add_section_anchor
 from src.ui.streamlit_styling import load_css, apply_default_styling
@@ -139,7 +128,7 @@ if 'logger' not in st.session_state:
         enable_file=True,
         log_dir="logs"
     )
-logger = st.session_state.logger    
+logger = st.session_state.logger
 
 
 # 세션 상태 초기화
@@ -249,7 +238,7 @@ def init_dbs():
 if 'dbs' not in st.session_state:
     logger.debug("프로세서 초기화 중...")
     st.session_state.dbs = init_dbs()
-dbs = st.session_state.dbs    
+dbs = st.session_state.dbs
 
 # ===============================================================================================
 
@@ -365,22 +354,19 @@ with st.sidebar:
     # 데이터 통계
     add_section_anchor("analytics-section")
     st.subheader("데이터 통계")
-    try:
-        logger.debug("데이터 통계 로드 시도...")
-        doc_stats = dbs['docs'].get_document_stats()
-        col1, col2 = st.columns(2)
-        vm_result = proc_emb.vector_manager.all_summary()
-        
-        with col1:
-            st.metric("문서 수", f"{doc_stats.get('total_files', 0)}")
-            st.metric("페이지 수", f"{doc_stats.get('total_pages', 0)}")
-        with col2:
-            if vm_result:
-                st.metric("청큰 수", f"{vm_result.get('chunk_count', 0)}")
-                st.metric("파일 크기", f"{vm_result.get('total_size_mb', 0):.1f} MB")
-    except Exception as e:
-        st.warning(f"데이터 통계 로드 실패: {str(e)}")
-        st.info("더미 데이터를 생성하려면 '더미 데이터 생성' 버튼을 클릭하세요.")
+
+    logger.debug("데이터 통계 로드 시도...")
+    doc_stats = dbs['docs'].get_document_stats()
+    col1, col2 = st.columns(2)
+    vm_result = proc_emb.vector_manager.all_summary()
+    
+    with col1:
+        st.metric("문서 수", f"{doc_stats.get('total_files', 0)}")
+        st.metric("페이지 수", f"{doc_stats.get('total_pages', 0)}")
+    with col2:
+        if vm_result:
+            st.metric("청큰 수", f"{vm_result.get('chunk_count', 0)}")
+            st.metric("파일 크기", f"{vm_result.get('total_size_mb', 0):.1f} MB")
 
     st.divider()
 
@@ -389,7 +375,7 @@ with st.sidebar:
 
     # 파일 업로드 버튼 추가
     uploaded_file = st.file_uploader(
-        "여기에 파일을 업로드하세요", # 사용자에게 보여줄 텍스트
+        "여기에 파일을 업로드하세요",
         type=['pdf', 'hwp'], # 허용할 파일 확장자 목록 (선택 사항) ['csv', 'txt', 'pdf', 'png'...]
         key="file_uploader"
     )
@@ -434,9 +420,8 @@ with st.sidebar:
         st.session_state.last_file_details = file_details
         st.session_state.last_embedding_summary = summary
     
-        # 처리 완료 플래그 설정 후 데이터 통계 갱신을 위한 재실행
+        # 처리 완료 플래그 설정 (rerun 없이 다음 렌더링에서 자동 반영)
         st.session_state.file_upload_processed = True
-        st.rerun()
     
     elif uploaded_file is None:
         # 파일이 제거되면 플래그 리셋
@@ -448,7 +433,6 @@ with st.sidebar:
             del st.session_state.last_embedding_summary
         st.info("파일을 기다리고 있습니다...")
     else:
-        # 이미 처리된 파일
         st.info("파일이 처리되었습니다. 새 파일을 업로드하려면 기존 파일을 제거하세요.")
     
     # llm_retrieval.vector_manager.summary()
@@ -465,7 +449,7 @@ with st.sidebar:
             st.json(st.session_state.last_embedding_summary)
     
     # 채팅 세션 관리
-    add_section_anchor("chat-session-section", "채팅 세션 관리") # 메인 영역 버튼 누르면 사이드바 이동
+    add_section_anchor("chat-session-section", "채팅 세션 관리")
     
     model_options = ["gpt-5", "gpt-5-nano", "gpt-5-mini"]
     selected_model = st.selectbox(
@@ -476,7 +460,9 @@ with st.sidebar:
     )
     if selected_model != st.session_state.get('current_model'):
         st.session_state.current_model = selected_model
-        st.info(f"언어모델이 '{selected_model}'(으)로 변경되었습니다.")
+        st.success(f"✅ 언어모델이 '{selected_model}'(으)로 변경되었습니다.")
+    else:
+        st.info(f"🖥️ 현재 사용 중: **{st.session_state.current_model}**")
 
     # 새로운 세션 생성
     if st.button("새 세션 생성", use_container_width=True, key="btn_new_session"):
@@ -523,7 +509,12 @@ with st.sidebar:
         is_current_session = (selected_session_id == st.session_state.session_id)
         
         # selectbox에서 선택한 세션이 현재 세션과 다르면 자동 전환
-        if not is_current_session:
+        session_switch_key = f"session_switch_{selected_session_id}"
+        if session_switch_key not in st.session_state:
+            st.session_state[session_switch_key] = False
+            
+        if not is_current_session and not st.session_state[session_switch_key]:
+            st.session_state[session_switch_key] = True
             st.session_state.session_id = selected_session_id
             st.session_state.selected_session = selected_session_name
             
@@ -532,10 +523,13 @@ with st.sidebar:
             st.session_state.messages = [{"role": msg["role"], "content": msg["content"]} for msg in db_messages]
             st.session_state.session_needs_rename = False
             
-            # updated_at 갱신하여 최근 세션 목록으로 이동 (같은 이름으로 업데이트)
-            dbs['chat'].update_session_name(selected_session_id, selected_session_name)
+            # 세션 타임스탬프 업데이트 (최근 세션 목록 상단에 표시)
+            dbs['chat'].update_session_timestamp(selected_session_id)
             
             st.rerun()
+        elif is_current_session:
+            # 현재 세션으로 복귀하면 플래그 리셋
+            st.session_state[session_switch_key] = False
         
         # 삭제 버튼 및 확인
         if st.button("삭제", key="selectbox_delete_session", type="secondary", use_container_width=True):
@@ -598,7 +592,7 @@ with st.sidebar:
             is_current = (session_id == st.session_state.session_id)
             
             # Expander 제목 (현재 세션은 표시)
-            expander_label = f"{'📌 ' if is_current else ''}{session_name[:30]}{'...' if len(session_name) > 30 else ''}"
+            expander_label = f'{"📌 " if is_current else ""}{session_name[:30]}{"..." if len(session_name) > 30 else ""}'
             
             with st.expander(expander_label, expanded=False):
                 st.markdown(f"**세션 이름**: {session_name}")
@@ -606,20 +600,38 @@ with st.sidebar:
                 st.markdown(f"**마지막 활동**: {updated_at}")
                 st.markdown(f"**메시지 수**: {message_count}개")
                 
-                col1, col2 = st.columns([3, 1])
+                col1, col2 = st.columns([1, 1])
                 
                 with col1:
                     # 세션 선택 버튼
                     if not is_current:
-                        if st.button("선택", key=f"select_session_{session_id}", use_container_width=True):
-                            st.session_state.session_id = session_id
-                            st.session_state.selected_session = session_name
-                            
-                            # DB에서 메시지 불러오기
-                            db_messages = dbs['chat'].get_session_messages(session_id)
-                            st.session_state.messages = [{"role": msg["role"], "content": msg["content"]} for msg in db_messages]
-                            st.session_state.session_needs_rename = False
-                            st.rerun()
+                        button_key = f"select_session_btn_{session_id}"
+                        flag_key = f"select_session_flag_{session_id}"
+                        
+                        # 이미 처리된 버튼인지 확인
+                        if flag_key not in st.session_state:
+                            st.session_state[flag_key] = False
+                        
+                        if st.button("선택", key=button_key, use_container_width=True):
+                            # 한 번만 실행되도록 플래그 설정
+                            if not st.session_state[flag_key]:
+                                st.session_state[flag_key] = True
+                                st.session_state.session_id = session_id
+                                st.session_state.selected_session = session_name
+                                
+                                # DB에서 메시지 불러오기
+                                db_messages = dbs['chat'].get_session_messages(session_id)
+                                st.session_state.messages = [{"role": msg["role"], "content": msg["content"]} for msg in db_messages]
+                                st.session_state.session_needs_rename = False
+                                
+                                # 다음 렌더링에서 플래그 리셋
+                                st.rerun()
+                        else:
+                            # 버튼이 클릭되지 않았으면 플래그 리셋
+                            st.session_state[flag_key] = False
+                    else:
+                        st.button("선택", key=f"current_session_btn_{session_id}", 
+                                 disabled=True, use_container_width=True, type="primary")
                 
                 with col2:
                     # 삭제 버튼
@@ -674,10 +686,10 @@ with st.sidebar:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("총 대화 수", f"{chat_stats.get('total_sessions', 0)}")
-        st.metric("활성 세션", f"{chat_stats.get('active_sessions', 0)}")
+        st.metric("전체 대화 개수", f"{chat_stats.get('total_sessions', 0)}개")
+        st.metric("활성 세션 개수", f"{chat_stats.get('active_sessions', 0)}개")
     with col2:
-        st.metric("총 메시지", f"{chat_stats.get('total_messages', 0)}")
+        st.metric("총 메시지 개수", f"{chat_stats.get('total_messages', 0)}개")
         
         # 평균 대화 길이 계산
         total_sessions = chat_stats.get('total_sessions', 0)
@@ -689,12 +701,11 @@ with st.sidebar:
     st.markdown("**메시지 구성**")
     user_msg = chat_stats.get('user_messages', 0)
     assistant_msg = chat_stats.get('assistant_messages', 0)
-    st.text(f"사용자: {user_msg} | AI: {assistant_msg}")
-        
-    #except Exception as e:
-    #st.warning(f"통계 로드 실패: {str(e)}")
+    st.markdown(f"<p style='font-size: 24px;'>사용자: {user_msg}개 | AI: {assistant_msg}개</p>", unsafe_allow_html=True)
 
-# ----- 2. 메인 영역 구현 -----
+# ==========(사이드바와 메인 구분선)==========
+
+# ----- 메인 영역 구현 -----
 
 # 메인 영역 제목
 st.title("문서 검색 시스템")
@@ -718,12 +729,12 @@ elif selected_tab == "문서 검색":
 def render_chat_message(role, content):
     """HTML/CSS로 채팅 메시지 렌더링"""
     if role == "user":
-        avatar = "🧑"
+        avatar = "✏️"
         align_class = "user"
         bg_color = "#E3F2FD"
         text_color = "#1f77b4"
     else:
-        avatar = "🤖"
+        avatar = "🖥️"
         align_class = "assistant"
         bg_color = "#F5F5F5"
         text_color = "#333"
@@ -760,9 +771,7 @@ if selected_tab == "AI 채팅":
     for message in st.session_state.messages:
         render_chat_message(message["role"], message["content"])
 
-    # --------------------------------------------------------------------------------------------
     # 사용자 입력 텍스트 박스 & 전송 버튼 구현
-    # --------------------------------------------------------------------------------------------
     if prompt := st.chat_input("여기에 메시지를 입력하세요...", disabled=not api_key_valid):
         
         query = prompt.strip()
@@ -800,39 +809,42 @@ if selected_tab == "AI 채팅":
         embedding_result = llm_retrieval.search_page(query, sort_by='page', filter_metadata=metadata)
         print_dic_tree(embedding_result)
         
-        # LLM 프로세서 초기화
-        llm_processor = LLMProcessor(session_id=st.session_state.session_id, config=config)
+        # LLM 프로세서 초기화 (선택된 모델 전달)
+        current_model = st.session_state.get('current_model', 'gpt-5')
+        llm_processor = LLMProcessor(
+            session_id=st.session_state.session_id, 
+            model=current_model,
+            config=config
+        )
+        logger.info(f"LLM 요청: model={current_model}, query={prompt[:50]}...")
         
         # 스트리밍 응답을 받을 빈 컨테이너 생성
         message_placeholder = st.empty()
-        
-        # 초기 로딩 메시지 표시
-        loading_html = """
-        <div class="chat-message assistant">
-            <div class="message-avatar">🤖</div>
-            <div class="message-bubble" style="background-color: #F5F5F5; color: #999;">
-                답변을 준비중입니다...
-            </div>
-        </div>
-        """
-        message_placeholder.markdown(loading_html, unsafe_allow_html=True)
-        
-        full_response = ""
-        
-        # 스트리밍 응답 처리 (첫 청크부터 즉시 표시)
-        for response_chunk in llm_processor.generate_response_stream(query, retrieved_chunks=embedding_result):
-            full_response = response_chunk
-            # HTML로 실시간 렌더링
-            content_html = full_response.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
-            streaming_html = f"""
+        with st.spinner("AI가 답변을 생성 중입니다..."):
+            loading_html = """
             <div class="chat-message assistant">
-                <div class="message-avatar">🤖</div>
-                <div class="message-bubble" style="background-color: #F5F5F5; color: #333;">
-                    {content_html}
+                <div class="message-avatar">🖥️</div>
+                <div class="message-bubble" style="background-color: #F5F5F5; color: #999;">
+                    답변을 준비중입니다...
                 </div>
             </div>
             """
-            message_placeholder.markdown(streaming_html, unsafe_allow_html=True)
+            message_placeholder.markdown(loading_html, unsafe_allow_html=True)
+            full_response = ""
+            # 스트리밍 응답 처리 (첫 청크부터 즉시 표시)
+            for response_chunk in llm_processor.generate_response_stream(query, retrieved_chunks=embedding_result):
+                full_response = response_chunk
+                # HTML로 실시간 렌더링
+                content_html = full_response.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+                streaming_html = f"""
+                <div class="chat-message assistant">
+                    <div class="message-avatar">🖥️</div>
+                    <div class="message-bubble" style="background-color: #F5F5F5; color: #333;">
+                        {content_html}
+                    </div>
+                </div>
+                """
+                message_placeholder.markdown(streaming_html, unsafe_allow_html=True)
         
         logger.debug(f"result: {full_response[:100]}")
         
@@ -847,42 +859,36 @@ if selected_tab == "AI 채팅":
             st.session_state.selected_session = new_session_name
             st.session_state.session_needs_rename = False
             logger.info(f"세션 이름 변경: {new_session_name}")
-            st.rerun()
-            
-        # TODO  평가 버튼 추가 예정
-        # if embedding_result and 'best_page' in embedding_result:
-        #   best_page = embedding_result['best_page']
-        #   if best_page and 'text' in best_page:
-        #       doc_text = best_page['text']
-        #       rag_evaluator.evaluate(query=query, doc_text=doc_text, query_result=None)
-        #   else:
-        #       
-
-    # ============================================================================================
+            st.rerun()  
 
 # ===== 2번 탭: 문서 검색 =====
 elif selected_tab == "문서 검색":
-    st.subheader("문서 검색")
-    top_k = st.number_input("결과 수", min_value=1, max_value=20, value=5, key="top_k_input")
-            
-    search_col1, search_col2 = st.columns([5, 1])
-    with search_col1:
-        search_query = st.text_input("검색어", key="doc_search_input", label_visibility="collapsed", placeholder="검색어를 입력하세요")
-    with search_col2:
-        search_button = st.button("검색", key="btn_search", use_container_width=True)
+    st.subheader("검색창 및 결과 수")
     
+    col1, col2, col3 = st.columns([2.2, 0.8, 7])
+    with col1:
+        search_query = st.text_input("검색어", key="doc_search_input", label_visibility="collapsed", placeholder="검색어를 입력하세요")
+    with col2:
+        top_k = st.number_input("결과 수", min_value=1, max_value=20, value=5, key="top_k_input")
+    with col3:
+        pass
+
+    col4, col5 = st.columns([1, 9])
+    with col4:
+        search_button = st.button("검색", key="btn_search", use_container_width=True)
+        if search_button:
+            embedding_result = llm_retrieval.search(query=search_query, top_k=top_k)
+            st.success(f"검색 완료! {len(embedding_result)}개 결과")
+    with col5:
+        pass  # 빈 공간
+
     if search_button:
         if search_query:
-            st.info(f"'{search_query}' 검색 중...")
             embedding_result = llm_retrieval.search(query=search_query, top_k=top_k)
             print_dic_tree(embedding_result)
-            
-            st.success(f"검색 완료! {len(embedding_result)}개 결과")
-            
             # 차트 시각화
             if embedding_result and len(embedding_result) > 0:
-                st.subheader("📊 검색 결과 시각화")
-                
+                st.subheader("검색 결과 시각화")
                 # 데이터 준비
                 chart_data = []
                 for idx, result in enumerate(embedding_result, 1):
@@ -891,7 +897,7 @@ elif selected_tab == "문서 검색":
                     similarity_pct = max(0, (1.5 - distance) / 1.5 * 100)
                     
                     # 파일명 축약 (너무 길면)
-                    display_name = file_name[:30] + '...' if len(file_name) > 30 else file_name
+                    display_name = file_name[:50] + '...' if len(file_name) > 50 else file_name
                     
                     chart_data.append({
                         '순위': f"{idx}. {display_name}",
@@ -899,7 +905,6 @@ elif selected_tab == "문서 검색":
                         '거리': distance
                     })
                 
-                import pandas as pd
                 df = pd.DataFrame(chart_data)
                 
                 # 문서 분포 계산
@@ -909,16 +914,97 @@ elif selected_tab == "문서 검색":
                     doc_distribution[file_name] = doc_distribution.get(file_name, 0) + 1
                 
                 # 탭으로 차트 종류 선택
-                chart_tab1, chart_tab2, chart_tab3 = st.tabs(["📊 유사도 막대", "📈 유사도 추이", "📑 문서 분포"])
+                chart_tab1, chart_tab2, chart_tab3 = st.tabs(["유사도 막대", "유사도 추이", "문서 분포"])
                 
                 with chart_tab1:
-                    st.bar_chart(df.set_index('순위')['유사도'])
+                    fig = go.Figure(data=[
+                        go.Bar(
+                            x=df['순위'],
+                            y=df['유사도'],
+                            text=df['유사도'].apply(lambda x: f"<b>{x:.1f}%</b>"),
+                            textposition='outside',
+                            textfont=dict(size=13, family='Arial Black', weight='bold'),
+                            marker=dict(
+                                color=df['유사도'],
+                                colorscale='Blues',
+                                showscale=True,
+                                colorbar=dict(
+                                    title=dict(text="유사도 (%)", font=dict(size=12, weight='bold')),
+                                    tickfont=dict(size=11, weight='bold')
+                                )
+                            ),
+                            hovertemplate='<b>%{x}</b><br>유사도: %{y:.2f}%<br>거리: %{customdata:.4f}<extra></extra>',
+                            customdata=df['거리']
+                        )
+                    ])
+                    fig.update_layout(hoverlabel=dict(font_size=20, font_family='Arial Black', bgcolor='#ffffff'))
+
+                    fig.update_layout(
+                        title=dict(text='검색 결과 유사도 분포', font=dict(size=24, weight='bold')),
+                        xaxis_title=dict(text='검색 순위', font=dict(size=20, weight='bold')),
+                        yaxis_title=dict(text='유사도 (%)', font=dict(size=18, weight='bold')),
+                        height=800,
+                        hovermode='closest',
+                        xaxis=dict(
+                            tickangle=-45,
+                            tickfont=dict(size=12, family='Arial Black', weight='bold'),
+                            showline=True,
+                            linewidth=2,
+                            linecolor='black',
+                            showgrid=True,
+                            gridwidth=1,
+                            gridcolor='lightgray'
+                        ),
+                        yaxis=dict(
+                            tickfont=dict(size=12, weight='bold'),
+                            showline=True,
+                            linewidth=2,
+                            linecolor='black',
+                            showgrid=True,
+                            gridwidth=1,
+                            gridcolor='lightgray'
+                        )
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
                 
                 with chart_tab2:
-                    st.line_chart(df.set_index('순위')['유사도'])
+                    fig = px.line(df, x='순위', y='유사도', markers=True, 
+                                  title='검색 결과 유사도 추이',
+                                  labels={'순위': '검색 순위', '유사도': '유사도 (%)'},
+                                  line_shape='linear')
+                    fig.update_traces(marker=dict(size=20, line=dict(width=2, color='white')),
+                                     line=dict(width=3))
+                    fig.update_layout(
+                        height=600,
+                        hovermode='x unified',
+                        title=dict(text='검색 결과 유사도 추이', font=dict(size=24, weight='bold')),
+                        xaxis_title=dict(text='검색 순위', font=dict(size=20, weight='bold')),
+                        yaxis_title=dict(text='유사도 (%)', font=dict(size=18, weight='bold')),
+                        xaxis=dict(
+                            tickfont=dict(size=12, weight='bold'),
+                            showline=True,
+                            linewidth=2,
+                            linecolor='black',
+                            showgrid=True,
+                            gridwidth=1,
+                            gridcolor='lightgray'
+                        ),
+                        yaxis=dict(
+                            tickfont=dict(size=12, weight='bold'),
+                            showline=True,
+                            linewidth=2,
+                            linecolor='black',
+                            showgrid=True,
+                            gridwidth=1,
+                            gridcolor='lightgray'
+                        )
+                    )
+                    fig.update_layout(hoverlabel=dict(font_size=20, font_family='Arial Black', bgcolor='#ffffff'))
+                    st.plotly_chart(fig, use_container_width=True)
                 
                 with chart_tab3:
-                    # 문서별 청크 수 파이 차트
+                    # 문서별 청크 수 차트
                     doc_df = pd.DataFrame(list(doc_distribution.items()), columns=['문서명', '청크 수'])
                     
                     # 문서명 축약
@@ -926,7 +1012,54 @@ elif selected_tab == "문서 검색":
                         lambda x: x[:25] + '...' if len(x) > 25 else x
                     )
                     
-                    st.bar_chart(doc_df.set_index('문서명 (축약)')['청크 수'])
+                    fig = go.Figure(data=[
+                        go.Bar(
+                            x=doc_df['문서명 (축약)'],
+                            y=doc_df['청크 수'],
+                            text=doc_df['청크 수'].apply(lambda x: f"<b>{x}</b>"),
+                            textposition='outside',
+                            textfont=dict(size=13, family='Arial Black', weight='bold'),
+                            marker=dict(
+                                color=doc_df['청크 수'],
+                                colorscale='Greens',
+                                showscale=True,
+                                colorbar=dict(
+                                    title=dict(text="청크 수", font=dict(size=12, weight='bold')),
+                                    tickfont=dict(size=11, weight='bold')
+                                )
+                            ),
+                            hovertemplate='<b>%{x}</b><br>청크 수: %{y}개<extra></extra>'
+                        )
+                    ])
+                    fig.update_layout(hoverlabel=dict(font_size=20, font_family='Arial Black', bgcolor='#ffffff'))
+                    fig.update_layout(
+                        title=dict(text='문서별 청크 분포', font=dict(size=24, weight='bold')),
+                        xaxis_title=dict(text='문서명', font=dict(size=20, weight='bold')),
+                        yaxis_title=dict(text='청크 수', font=dict(size=18, weight='bold')),
+                        height=800,
+                        hovermode='closest',
+                        xaxis=dict(
+                            tickangle=-45,
+                            tickfont=dict(size=11, family='Arial Black', weight='bold'),
+                            showline=True,
+                            linewidth=2,
+                            linecolor='black',
+                            showgrid=True,
+                            gridwidth=1,
+                            gridcolor='lightgray'
+                        ),
+                        yaxis=dict(
+                            tickfont=dict(size=12, weight='bold'),
+                            showline=True,
+                            linewidth=2,
+                            linecolor='black',
+                            showgrid=True,
+                            gridwidth=1,
+                            gridcolor='lightgray'
+                        )
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
                     st.caption(f"총 {len(doc_distribution)}개 문서에서 {len(embedding_result)}개 청크 검색됨")
             
             st.subheader("검색 결과")
@@ -965,19 +1098,9 @@ elif selected_tab == "문서 검색":
                     highlighted_text = text_snippet
                     if search_query and len(search_query) > 2:
                         # 검색어를 볼드체로 강조
-                        import re
                         pattern = re.compile(re.escape(search_query), re.IGNORECASE)
                         highlighted_text = pattern.sub(f"**{search_query}**", text_snippet)
                     
                     st.markdown(highlighted_text)
         else:
             st.warning("검색어를 입력해주세요.")
-
-    # TODO: 검색 결과 표시 예시
-    # for result in search_results:
-    #     with st.expander(f"{result['document']} - 페이지 {result['page']}"):
-    #         st.markdown(f"**유사도:** {result['score']:.2%}")
-    #         st.markdown(f"**내용:** {result['snippet']}")
-    #         st.markdown(f"[원본 페이지로 이동 →](#page-{result['page']})")
-# ------- 사이드바  끝 구간 -------
-

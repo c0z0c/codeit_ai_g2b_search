@@ -23,6 +23,7 @@
 .stApp {
     margin: 0 !important;
     padding: 0 !important;
+    background-color: #e8e8e8 !important;
 }
 
 /* 2. 메인 콘텐츠 영역 너비 제한 해제 */
@@ -32,6 +33,71 @@
     padding-right: 5% !important;
     padding-top: 1rem !important;
     padding-bottom: 1rem !important;
+}
+
+/* 3. 메인 영역 배경색 통일 */
+[data-testid="stAppViewContainer"] {
+    background-color: #e8e8e8 !important;
+}
+
+[data-testid="stHeader"] {
+    background-color: #e8e8e8 !important;
+}
+
+[data-testid="stBottom"] {
+    background-color: #e8e8e8 !important;
+}
+
+[data-testid="stChatInput"] {
+    background-color: #e8e8e8 !important;
+}
+
+[data-testid="stChatInput"] * {
+    background-color: #e8e8e8 !important;
+}
+
+[data-testid="stChatInput"] > div {
+    background-color: #e8e8e8 !important;
+}
+
+[data-testid="stChatInput"] div {
+    background-color: #e8e8e8 !important;
+}
+
+[data-testid="stChatInput"] [data-baseweb="base-input"] {
+    background-color: #e8e8e8 !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    background-color: #ffffff !important;
+    border: 1px solid #d0d0d0 !important;
+}
+
+/* ==================== 탭 스타일 ==================== */
+[data-testid="stTabs"] {
+    background-color: transparent !important;
+}
+
+[data-testid="stTabs"] button {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    padding: 12px 24px !important;
+    background-color: #d4c535 !important;
+    color: #666666 !important;
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+}
+
+[data-testid="stTabs"] button:hover {
+    background-color: #e0e0e0 !important;
+    color: #333333 !important;
+}
+
+[data-testid="stTabs"] button[aria-selected="true"] {
+    background-color: #bfd7f1 !important;
+    color: #1f77b4 !important;
+    border-bottom: 3px solid #1f77b4 !important;
+    font-weight: 700 !important;
 }
 
 /* ==================== 세션 목록 스크롤 컨테이너 ==================== */
@@ -152,7 +218,7 @@
     word-break: break-word !important;
     line-height: 1.5 !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-    font-size: 0.95rem !important;
+    font-size: 1.15rem !important;
 }
 
 /* Assistant 말풍선 */
@@ -586,38 +652,47 @@ tbody tr:hover {
 }
 
 /* ==================== 사이드바 ==================== */
-.sidebar {
-    background: linear-gradient(180deg, var(--primary-color) 0%, #1560a0 100%);
-    color: white;
-    padding: 2rem 1.5rem;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
+/* Streamlit 사이드바 배경색 */
+[data-testid="stSidebar"] {
+    background-color: #c4d7db !important;
 }
 
-.sidebar h2 {
-    color: white;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.3);
-    padding-bottom: 0.5rem;
-    margin-bottom: 1rem;
+[data-testid="stSidebar"] > div:first-child {
+    background-color: #c4d7db !important;
 }
 
-.sidebar-item {
-    margin-bottom: 1rem;
-    padding: 0.75rem;
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: var(--transition);
+/* 사이드바 텍스트 색상 (가독성 향상) */
+[data-testid="stSidebar"] * {
+    color: #000000 !important;
 }
 
-.sidebar-item:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-    transform: translateX(4px);
+[data-testid="stSidebar"] .stMarkdown {
+    color: #FFFFFF !important;
 }
 
-.sidebar-item.active {
-    background-color: rgba(255, 255, 255, 0.3);
-    border-left: 3px solid white;
+/* 사이드바 구분선 */
+[data-testid="stSidebar"] hr {
+    border-color: #2147c4 !important;
+}
+
+/* 사이드바 입력 필드 */
+[data-testid="stSidebar"] input,
+[data-testid="stSidebar"] textarea,
+[data-testid="stSidebar"] select {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border-color: #755e5e !important;
+}
+
+/* 사이드바 버튼 */
+[data-testid="stSidebar"] button {
+    background-color: #5fafc5 !important;
+    color: #FFFFFF !important;
+    border: 1px solid #6E6E6E !important;
+}
+
+[data-testid="stSidebar"] button:hover {
+    background-color: #2db5db !important;
 }
 
 /* ==================== 프로그레스 바 ==================== */

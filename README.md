@@ -1,15 +1,28 @@
 # RAG 기반 공공데이터 문서 처리 시스템
 
-> **[중급 프로젝트]** OpenAI LLM + LangChain 기반 문서 검색 및 질의응답 시스템
->
-> 📅 **프로젝트 기간**: 2025.11.08 ~ 2025.11.28 (3주) ✅ **완료**
+---
 > **[결과 보고서 다운로드](https://drive.google.com/file/d/1EjaqbRXXX6tl1I4omXlMSTklGSylVe_U/view?usp=drive_link)**
+
+> **[중급 프로젝트]** OpenAI LLM + LangChain 기반 문서 검색 및 질의응답 시스템<br/>
+><br/>
+> 📅 **프로젝트 기간**: 2025.11.08 ~ 2025.11.28 (3주)<br/>
+><br/>
+> ✅ **완료** **[결과 보고서 다운로드](https://c0z0c.github.io/codeit_ai_g2b_search/보고서/3팀_중급프로젝트_결과보고서_최종.pdf)**
+
+<video width="320" height="240" controls>
+  <source src="docs/발표자료/코드잇AI4기3팀중급과제_데모.mp4" type="video/mp4">
+</video>
+
+
+---
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-API-green.svg)](https://openai.com/)
 [![LangChain](https://img.shields.io/badge/LangChain-Latest-orange.svg)](https://langchain.com/)
 [![FAISS](https://img.shields.io/badge/FAISS-Vector-red.svg)](https://github.com/facebookresearch/faiss)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io/)
+
+---
 
 ## 📋 프로젝트 개요
 
