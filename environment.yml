@@ -185,7 +185,7 @@ dependencies:
       # Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
       # Java: sudo apt-get install default-jdk
       - helper-hwp==0.5.1
-      - libhwp==0.2.0
+      #- libhwp==0.2.0
       - pyhwp==0.1b15
       - hwp-extract==0.1.0
       - jpype1==1.6.0
