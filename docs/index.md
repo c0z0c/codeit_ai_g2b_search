@@ -20,7 +20,7 @@ author: "김명환"
 ## 데모 페이지
 [문서 검색 시스템 streamlit](https://codeitaig2bsearch-mxe5nzpromomenzclxcqfx.streamlit.app)
 
-<video width="320" height="240" controls>
+<video width="640" height="480" controls>
   <source src="발표자료/코드잇AI4기3팀중급과제_데모.mp4" type="video/mp4">
 </video>
 
