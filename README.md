@@ -17,6 +17,8 @@
 > **최종 결과 발표 자료 다운로드**
 > **[pdf 링크](https://naver.me/50J7Z8K7)** 
 > **[pptx링크](https://naver.me/GxLPaU4m)**
+> **[pdf 링크2](docs/발표자료/3팀_중급프로젝트_발표.pdf)** 
+> **[pptx링크2](docs/발표자료/3팀_중급프로젝트_발표.pptx)**
 
 ---
 

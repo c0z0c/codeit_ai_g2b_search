@@ -17,6 +17,9 @@ author: "김명환"
 ## 결과 보고서
 [결과 보고서 다운로드](https://c0z0c.github.io/codeit_ai_g2b_search/보고서/3팀_중급프로젝트_결과보고서_최종.pdf)
 
+## 발표
+[발표](발표자료/3팀_중급프로젝트_발표.pdf)
+
 ## 데모 페이지
 [문서 검색 시스템 streamlit](https://codeitaig2bsearch-mxe5nzpromomenzclxcqfx.streamlit.app)
 
