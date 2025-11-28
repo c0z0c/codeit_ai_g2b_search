@@ -37,17 +37,6 @@ sudo apt-get install -y \
     libcairo2-dev \
     libgdk-pixbuf2.0-dev
 
-# 2. Rust 설치 (libhwp, cryptography 등에 필요)
-echo ""
-echo "[2/6] Rust 설치..."
-if ! command -v rustc &> /dev/null; then
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    source "$HOME/.cargo/env"
-    echo "Rust 설치 완료: $(rustc --version)"
-else
-    echo "Rust가 이미 설치되어 있습니다: $(rustc --version)"
-fi
-
 # 3. Java 설치 (jpype1, pyhwp에 필요)
 echo ""
 echo "[3/6] Java 설치..."
