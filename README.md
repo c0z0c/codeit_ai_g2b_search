@@ -14,6 +14,9 @@
   <source src="docs/발표자료/코드잇AI4기3팀중급과제_데모.mp4" type="video/mp4">
 </video>
 
+> **최종 결과 발표 자료 다운로드**
+> **[pdf 링크](https://naver.me/50J7Z8K7)** 
+> **[pptx링크](https://naver.me/GxLPaU4m)**
 
 ---
 
