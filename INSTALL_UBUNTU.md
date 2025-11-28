@@ -141,7 +141,7 @@ sudo apt-get install -y \
 
 ### 2. Rust 설치
 
-`libhwp`, `cryptography` 등의 패키지는 Rust 컴파일러가 필요합니다.
+`helper-hwp`, `cryptography` 등의 패키지는 Rust 컴파일러가 필요합니다.
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -218,17 +218,6 @@ error: wkhtmltopdf is not installed
 ```bash
 sudo apt-get install -y wkhtmltopdf
 ```
-
-### libhwp 설치 실패
-
-`libhwp`가 설치되지 않는 경우, 이 패키지 없이도 대부분의 기능은 작동합니다. HWP 파일 처리가 필요한 경우에만 필수입니다.
-
-```bash
-# libhwp를 제외하고 설치
-pip install -r requirements.txt --no-deps
-# 또는 requirements.txt에서 libhwp 라인 제거
-```
-
 ### 메모리 부족 오류
 
 대용량 패키지(torch, transformers 등) 설치 시 메모리가 부족할 수 있습니다.
@@ -248,7 +237,6 @@ pip install -r requirements.txt --no-cache-dir
 
 ### HWP 처리가 필요없는 경우
 - `helper-hwp`
-- `libhwp`
 - `pyhwp`
 - `hwp-extract`
 - `jpype1`
