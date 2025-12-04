@@ -807,7 +807,7 @@ if selected_tab == "AI 채팅":
         
         # 벡터 검색
         embedding_result = llm_retrieval.search_page(query, sort_by='page', filter_metadata=metadata)
-        print_dic_tree(embedding_result)
+        #print_dic_tree(embedding_result)
         
         # LLM 프로세서 초기화 (선택된 모델 전달)
         current_model = st.session_state.get('current_model', 'gpt-5')
@@ -885,7 +885,7 @@ elif selected_tab == "문서 검색":
     if search_button:
         if search_query:
             embedding_result = llm_retrieval.search(query=search_query, top_k=top_k)
-            print_dic_tree(embedding_result)
+            #print_dic_tree(embedding_result)
             # 차트 시각화
             if embedding_result and len(embedding_result) > 0:
                 st.subheader("검색 결과 시각화")
